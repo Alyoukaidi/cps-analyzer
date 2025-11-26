@@ -6,7 +6,31 @@ import io
 import zipfile
 
 # ==================================================================================
-# LOGIQUE MÉTIER (Parsing + HTML) - INCHANGÉE
+# 0. GOOGLE TAG MANAGER (GTM)
+# ==================================================================================
+
+def inject_gtm(gtm_id):
+    """
+    Injecte le code Google Tag Manager (Script + Noscript)
+    """
+    if not gtm_id: return
+    
+    # Attention : les doubles accolades {{ }} sont nécessaires pour éviter les conflits avec Python
+    gtm_code = f"""
+    <script>(function(w,d,s,l,i){{w[l]=w[l]||[];w[l].push({{'gtm.start':
+    new Date().getTime(),event:'gtm.js'}});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    }})(window,document,'script','dataLayer','{gtm_id}');</script>
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={gtm_id}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    """
+    
+    # On injecte le code HTML/JS de manière invisible
+    components.html(gtm_code, height=0, width=0)
+
+# ==================================================================================
+# 1. & 2. LOGIQUE MÉTIER CPS (INCHANGÉE)
 # ==================================================================================
 
 cps_timecode_re = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)")
@@ -222,9 +246,9 @@ def generate_html_string(cues, source_filename: str) -> str:
         if not has_content: continue
         
         warning_html = ""
-        # LOGIQUE WARNING
+        # LOGIQUE WARNING CORRIGÉE (> 19 CPS)
         if grp["name"] == "red" and grp["pct"] > 10:
-            warning_html = "<div class='warning-icon' title='Attention : Les sous-titres trop rapides (> 19 CPS) dépassent 10% du total.'>⚠️</div>"
+            warning_html = "<div class='warning-icon' title='Attention : Les sous-titres très rapides (> 19 CPS) dépassent 10% du total.'>⚠️</div>"
         elif grp["name"] == "green" and grp["pct"] < 70:
             warning_html = "<div class='warning-icon' title='Attention : Moins de 70% des sous-titres sont dans la zone de confort (Vert).'>⚠️</div>"
 
@@ -246,16 +270,21 @@ def generate_html_string(cues, source_filename: str) -> str:
     return "".join(html_parts)
 
 # ==================================================================================
-# APP STREAMLIT (Version Anglaise Standard)
+# APP STREAMLIT (Version avec Google Tag Manager)
 # ==================================================================================
 
 def main():
     st.set_page_config(page_title="SRT CPS Analyzer", page_icon="⏱️", layout="centered")
     
+    # --- CONFIG GTM ---
+    # Ton ID fourni
+    GTM_ID = "GTM-W972MJXS" 
+    inject_gtm(GTM_ID)
+    # ------------------
+
     st.markdown("# ⏱️ Analyseur de CPS pour Sous-titres")
     st.markdown("---")
 
-    # Initialisation de la clé unique pour le bouton Reset
     if 'uploader_key' not in st.session_state:
         st.session_state.uploader_key = 0
 
@@ -274,13 +303,13 @@ def main():
         with st.expander("Les seuils et couleurs utilisés"):
             st.markdown("""
             * 🟢 **Vert (≤ 17 CPS)** : Lecture confortable.
-            * 🟠 **Orange (17 - 23 CPS)** : Lecture rapide.
-            * 🔴 **Rouge (> 23 CPS)** : Trop rapide.
+            * 🟠 **Orange (17 - 19 CPS)** : Lecture rapide.
+            * 🔴 **Rouge (> 19 CPS)** : Très rapide / Trop rapide.
             """)
         with st.expander("Signification des alertes ⚠️"):
             st.markdown("""
             Un panneau danger **⚠️** apparaît dans le rapport HTML si :
-            * Plus de **10%** des sous-titres sont dans la zone **Rouge**.
+            * Plus de **10%** des sous-titres sont dans la zone **Rouge** (> 19 CPS).
             * Moins de **70%** des sous-titres sont dans la zone **Verte**.
             
             Passez votre souris sur le panneau dans le rapport pour voir le détail.
@@ -289,18 +318,15 @@ def main():
     with tab_app:
         st.info("👇 Glissez-déposez vos fichiers **.srt** ci-dessous.", icon="📂")
 
-        # Uploader Standard (Anglais)
         uploaded_files = st.file_uploader(
             label="Upload SRT files", 
             type=["srt"], 
             accept_multiple_files=True,
-            label_visibility="collapsed", # On cache le label texte car on a mis st.info au dessus
+            label_visibility="collapsed",
             key=f"uploader_{st.session_state.uploader_key}"
         )
 
-        # Si des fichiers sont présents, on affiche les boutons d'actions
         if uploaded_files:
-            # Bouton Reset bien visible
             col1, col2 = st.columns([0.85, 0.15])
             with col2:
                 st.button("🗑️ Reset", on_click=reset_uploader, help="Tout effacer")
