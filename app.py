@@ -6,7 +6,7 @@ import io
 import zipfile
 
 # ==================================================================================
-# 1. & 2. & 3. LOGIQUE CPS ET GENERATION HTML (INCHANGÉE)
+# 1. & 2. & 3. LOGIQUE CPS (INCHANGÉE)
 # ==================================================================================
 
 cps_timecode_re = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)")
@@ -68,7 +68,6 @@ def parse_srt_content(content_str: str):
     blocks = re.split(r"\n\s*\n", content_str.strip(), flags=re.MULTILINE)
     cues = []
     index_counter = 1
-
     for block in blocks:
         lines = block.splitlines()
         if len(lines) < 2: continue
@@ -99,6 +98,10 @@ def parse_srt_content(content_str: str):
         index_counter += 1
     return cues
 
+# ==================================================================================
+# 3. GÉNÉRATION HTML (MODIFIÉE POUR LES WARNINGS ⚠️)
+# ==================================================================================
+
 def generate_html_string(cues, source_filename: str) -> str:
     total_raw = len(cues)
     if total_raw == 0: return f"<h3>⚠️ {source_filename} : Vide ou mal formé.</h3>"
@@ -106,8 +109,11 @@ def generate_html_string(cues, source_filename: str) -> str:
     excluded_count = total_raw - len(real_cues)
     total = len(real_cues)
     if total == 0: return f"<h3>⚠️ {source_filename} : Aucun dialogue analysable.</h3>"
+    
     counts = {i: 0 for i in range(1, 8)}
     for c in real_cues: counts[c["category"]] += 1
+    
+    # Calcul des stats pour HTML
     cps_values = [c["cps"] for c in real_cues if c["duration"] > 0]
     avg_cps = sum(cps_values) / len(cps_values) if cps_values else 0.0
     median_cps = 0.0
@@ -115,16 +121,20 @@ def generate_html_string(cues, source_filename: str) -> str:
         sorted_cps = sorted(cps_values)
         n = len(sorted_cps)
         median_cps = (sorted_cps[n//2 - 1] + sorted_cps[n//2])/2 if n % 2 == 0 else sorted_cps[n//2]
+    
     cues_by_cat = {i: [] for i in range(1, 8)}
     sorted_global = sorted(real_cues, key=lambda c: c["cps"], reverse=True)
     for c in sorted_global: cues_by_cat[c["category"]].append(c)
     for cat in range(1, 8): cues_by_cat[cat].sort(key=lambda c: c["cps"])
+    
     count_green = sum(counts[i] for i in range(1, 4))
     count_orange = counts[4]
     count_red = sum(counts[i] for i in range(5, 8))
+    
     pct_green = (count_green / total * 100) if total else 0.0
     pct_orange = (count_orange / total * 100) if total else 0.0
     pct_red = (count_red / total * 100) if total else 0.0
+    
     label_map = {
         1: "Optimal ≤ 12 CPS", 2: "Très lisible > 12 à 15 CPS", 3: "Lisible > 15 à 17 CPS",
         4: "Rapide > 17 à 19 CPS", 5: "Très rapide > 19 à 23 CPS", 6: "Trop rapide > 23 à 28 CPS",
@@ -139,11 +149,51 @@ def generate_html_string(cues, source_filename: str) -> str:
         {"name": "orange", "cats": [4],       "pct": pct_orange},
         {"name": "red",    "cats": [5, 6, 7], "pct": pct_red},
     ]
+
     html_parts = []
-    # CSS Minifié pour l'app
+    # CSS incluant le style pour le WARNING
     html_parts.append(f"""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>CPS - {html.escape(source_filename)}</title>
-    <style>body {{ font-family: system-ui, sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 10px 40px; background: #f5f5f5; color: #333; }} h1 {{ font-size: 1.6rem; margin-bottom: 20px; }} .summary {{ background: #fff; border-radius: 6px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 20px; }} .summary-header {{ display: flex; align-items: center; justify-content: space-between; gap: 40px; margin-bottom: 12px; }} .pie-wrapper {{ flex-shrink: 0; flex-grow: 1; position: relative; display: flex; justify-content: center; min-width: 200px; }} .pie {{ width: 100%; height: 60px; border-radius: 4px; }} .barcode-wrapper {{ margin-top: 4px; }} .barcode {{ width: 100%; height: 16px; border-radius: 4px; }} .caption {{ font-size: 0.85em; color: #666; margin-top: 4px; }} .group-container {{ display: flex; margin-bottom: 8px; }} .group-list {{ flex-grow: 1; margin-right: 10px; }} .group-bracket {{ width: 90px; display: flex; align-items: center; flex-shrink: 0; }} .bracket-visual {{ width: 15px; align-self: stretch; border-right: 3px solid; border-top: 3px solid; border-bottom: 3px solid; border-top-right-radius: 8px; border-bottom-right-radius: 8px; margin-right: 10px; margin-top: 2px; margin-bottom: 2px; opacity: 0.8; }} .bracket-label {{ font-weight: 700; font-size: 1.1rem; }} .group-green .bracket-visual {{ border-color: #00d000; }} .group-green .bracket-label {{ color: #00a000; }} .group-orange .bracket-visual {{ border-color: #ff8c00; }} .group-orange .bracket-label {{ color: #d07000; }} .group-red .bracket-visual {{ border-color: #ff0000; }} .group-red .bracket-label {{ color: #c00000; }} details.cat-details {{ margin-bottom: 5px; border-radius: 4px; overflow: hidden; }} details.cat-details summary {{ cursor: pointer; padding: 6px 10px; font-weight: 600; display: flex; justify-content: space-between; list-style: none; outline: none; }} details.cat-details[open] summary .arrow {{ transform: rotate(90deg); }} .arrow {{ display: inline-block; margin-right: 6px; transition: transform 0.15s; }} .cat-content {{ padding: 6px 8px 10px; background: #fff; border-top: 1px solid rgba(0,0,0,0.05); }} table {{ width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 0.9rem; background: #fff; }} th, td {{ border-bottom: 1px solid #eee; padding: 4px 6px; text-align: left; vertical-align: top; }} th {{ background: #f9f9f9; position: sticky; top: 0; font-size: 0.85rem; color: #555; }} td:nth-child(5) {{ color: #444; }}</style></head><body>""")
+    <style>
+    body {{ font-family: system-ui, sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 10px 40px; background: #f5f5f5; color: #333; }} 
+    h1 {{ font-size: 1.6rem; margin-bottom: 20px; }} 
+    .summary {{ background: #fff; border-radius: 6px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 20px; }} 
+    .summary-header {{ display: flex; align-items: center; justify-content: space-between; gap: 40px; margin-bottom: 12px; }} 
+    .pie-wrapper {{ flex-shrink: 0; flex-grow: 1; position: relative; display: flex; justify-content: center; min-width: 200px; }} 
+    .pie {{ width: 100%; height: 60px; border-radius: 4px; }} 
+    .barcode-wrapper {{ margin-top: 4px; }} 
+    .barcode {{ width: 100%; height: 16px; border-radius: 4px; }} 
+    .caption {{ font-size: 0.85em; color: #666; margin-top: 4px; }} 
+    .group-container {{ display: flex; margin-bottom: 8px; }} 
+    .group-list {{ flex-grow: 1; margin-right: 10px; }} 
+    .group-bracket {{ width: 90px; display: flex; align-items: center; flex-shrink: 0; position: relative; }} 
+    
+    /* STYLE ACCOLADE */
+    .bracket-visual {{ width: 15px; align-self: stretch; border-right: 3px solid; border-top: 3px solid; border-bottom: 3px solid; border-top-right-radius: 8px; border-bottom-right-radius: 8px; margin-right: 10px; margin-top: 2px; margin-bottom: 2px; opacity: 0.8; }} 
+    .bracket-label-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; }}
+    .bracket-label {{ font-weight: 700; font-size: 1.1rem; line-height: 1.1; }} 
+    
+    /* STYLE WARNING */
+    .warning-icon {{ font-size: 1.2rem; cursor: help; margin-top: 4px; animation: pulse 2s infinite; }}
+    @keyframes pulse {{ 0% {{ transform: scale(1); opacity: 1; }} 50% {{ transform: scale(1.1); opacity: 0.8; }} 100% {{ transform: scale(1); opacity: 1; }} }}
+    
+    .group-green .bracket-visual {{ border-color: #00d000; }} .group-green .bracket-label {{ color: #00a000; }} 
+    .group-orange .bracket-visual {{ border-color: #ff8c00; }} .group-orange .bracket-label {{ color: #d07000; }} 
+    .group-red .bracket-visual {{ border-color: #ff0000; }} .group-red .bracket-label {{ color: #c00000; }} 
+    
+    details.cat-details {{ margin-bottom: 5px; border-radius: 4px; overflow: hidden; }} 
+    details.cat-details summary {{ cursor: pointer; padding: 6px 10px; font-weight: 600; display: flex; justify-content: space-between; list-style: none; outline: none; }} 
+    details.cat-details[open] summary .arrow {{ transform: rotate(90deg); }} 
+    .arrow {{ display: inline-block; margin-right: 6px; transition: transform 0.15s; }} 
+    .cat-content {{ padding: 6px 8px 10px; background: #fff; border-top: 1px solid rgba(0,0,0,0.05); }} 
+    table {{ width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 0.9rem; background: #fff; }} 
+    th, td {{ border-bottom: 1px solid #eee; padding: 4px 6px; text-align: left; vertical-align: top; }} 
+    th {{ background: #f9f9f9; position: sticky; top: 0; font-size: 0.85rem; color: #555; }} 
+    td:nth-child(5) {{ color: #444; }}
+    </style></head><body>""")
+    
     html_parts.append(f"<h1>Analyse CPS : {html.escape(source_filename)}</h1>")
+    
+    # Pie & Barcode
     sorted_by_cps = sorted(real_cues, key=lambda c: c["cps"])
     if not sorted_by_cps: pie_bg = "#ddd"
     else:
@@ -154,6 +204,7 @@ def generate_html_string(cues, source_filename: str) -> str:
             parts.append(f"{color} {i * pct_per_st:.3f}%")
             parts.append(f"{color} {(i+1) * pct_per_st:.3f}%")
         pie_bg = "linear-gradient(to right, " + ", ".join(parts) + ")"
+    
     barcode_bg = "#ddd"
     if real_cues:
         b_parts = []
@@ -165,13 +216,24 @@ def generate_html_string(cues, source_filename: str) -> str:
             b_parts.append(f"{color} {i * pct_step:.3f}%")
             b_parts.append(f"{color} {(i+1) * pct_step:.3f}%")
         barcode_bg = "linear-gradient(to right, " + ", ".join(b_parts) + ")"
+    
     median_clamped = min(median_cps, 30)
     arrow_pos = (median_clamped / 30) * 100
+    
     html_parts.append(f"""<div class='summary'><div class='summary-header'><div class='summary-text'><p style='margin:2px 0;'><strong>Total :</strong> {total_raw} ST <span style='font-size:0.85em; color:#777;'>(dont {excluded_count} exclus)</span></p><p style='margin:2px 0;'><strong>Moyenne :</strong> {avg_cps:.2f} CPS</p></div><div class='pie-wrapper'><div class='pie' style='background:{pie_bg};'></div><div style='position:absolute; top:-12px; left:{arrow_pos:.1f}%; transform:translateX(-50%); border-left:8px solid transparent; border-right:8px solid transparent; border-top:14px solid #333;'></div><div style='position:absolute; top:-32px; left:{arrow_pos:.1f}%; transform:translateX(-50%); font-size:0.75em; font-weight:700;'>Médiane: {median_cps:.2f}</div></div></div><div class='barcode-wrapper'><div class='barcode' style='background:{barcode_bg};'></div><p class='caption'>Progression chronologique</p></div></div>""")
     html_parts.append("<div class='cat-section'><h2>Répartition</h2>")
+    
     for grp in groups:
         has_content = any(counts[c] > 0 for c in grp["cats"])
         if not has_content: continue
+        
+        # LOGIQUE DES WARNINGS ICI
+        warning_html = ""
+        if grp["name"] == "red" and grp["pct"] > 10:
+            warning_html = "<div class='warning-icon' title='Attention : Les sous-titres trop rapides (> 23 CPS) dépassent 10% du total.'>⚠️</div>"
+        elif grp["name"] == "green" and grp["pct"] < 70:
+            warning_html = "<div class='warning-icon' title='Attention : Moins de 70% des sous-titres sont dans la zone de confort (Vert).'>⚠️</div>"
+
         html_parts.append(f"<div class='group-container group-{grp['name']}'><div class='group-list'>")
         for cat in grp["cats"]:
             count = counts[cat]
@@ -185,70 +247,126 @@ def generate_html_string(cues, source_filename: str) -> str:
                 txt = html.escape(c["text_display"][:300]).replace("&lt;br&gt;", "<br>")
                 html_parts.append(f"<tr><td>{c['index']}</td><td>{c['start']} → {c['end']}</td><td>{c['duration']:.2f}s</td><td>{c['cps']:.2f}</td><td>{txt}</td></tr>")
             html_parts.append("</table></div></details>")
-        html_parts.append(f"</div><div class='group-bracket'><div class='bracket-visual'></div><div class='bracket-label'>{grp['pct']:.1f}%</div></div></div>")
+        
+        # Insertion du warning sous le pourcentage
+        html_parts.append(f"</div><div class='group-bracket'><div class='bracket-visual'></div><div class='bracket-label-container'><div class='bracket-label'>{grp['pct']:.1f}%</div>{warning_html}</div></div></div>")
+        
     html_parts.append("</div></body></html>")
     return "".join(html_parts)
 
 # ==================================================================================
-# 4. INTERFACE STREAMLIT (Accordéons pour l'aide et les résultats)
+# 4. INTERFACE STREAMLIT (AVEC TRADUCTION CSS + BOUTON RESET)
 # ==================================================================================
 
 def main():
     st.set_page_config(page_title="SRT CPS Analyzer", page_icon="⏱️", layout="centered")
     
+    # --- CSS HACK POUR LA TRADUCTION ET LE STYLE ---
+    # C'est ici qu'on force l'affichage en français du File Uploader
+    st.markdown("""
+    <style>
+        /* Traduction de "Drag and drop files here" */
+        [data-testid='stFileUploaderDropzoneInstructions'] > div:first-child { visibility: hidden; height: 0; }
+        [data-testid='stFileUploaderDropzoneInstructions'] > div:first-child::after {
+            content: "Glissez-déposez vos fichiers .srt ici";
+            visibility: visible;
+            display: block;
+            height: auto;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+        
+        /* Traduction de "Limit 200MB per file" */
+        [data-testid='stFileUploaderDropzoneInstructions'] > div:nth-child(2) { visibility: hidden; height: 0; }
+        [data-testid='stFileUploaderDropzoneInstructions'] > div:nth-child(2)::after {
+            content: "Limite 200MB par fichier • SRT";
+            visibility: visible;
+            display: block;
+            height: auto;
+            font-size: 0.8rem;
+        }
+
+        /* Traduction du bouton "Browse files" - C'est plus délicat, on masque et on réécrit par dessus */
+        button[data-testid="stBaseButton-secondary"] {
+            position: relative;
+            color: transparent !important;
+        }
+        button[data-testid="stBaseButton-secondary"]::after {
+            content: "Parcourir les fichiers";
+            position: absolute;
+            color: rgb(49, 51, 63); /* Couleur texte standard */
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+        }
+        /* Ajustement couleur texte bouton pour mode sombre éventuel */
+        @media (prefers-color-scheme: dark) {
+            button[data-testid="stBaseButton-secondary"]::after {
+                color: white;
+            }
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown("# ⏱️ Analyseur de CPS pour Sous-titres")
     st.markdown("---")
 
+    # Gestion de l'état pour le reset
+    if 'uploader_key' not in st.session_state:
+        st.session_state.uploader_key = 0
+
+    def reset_uploader():
+        st.session_state.uploader_key += 1
+
     tab_app, tab_help = st.tabs(["🚀 Lancer l'analyse", "ℹ️ Aide & FAQ"])
 
-    # --- ONGLET 2 : AIDE (MODIFIABLE FACILEMENT) ---
+    # --- ONGLET AIDE ---
     with tab_help:
         st.header("Foire Aux Questions")
-        st.markdown("Cliquez sur les questions ci-dessous pour voir les réponses.")
-
-        # ========================================================
-        # ZONE À REMPLIR : COPIE-COLLE LES BLOCS CI-DESSOUS
-        # ========================================================
-
-        # --- CONTENU 1 ---
         with st.expander("Qu'est-ce que le CPS ?"):
             st.markdown("""
             Le **CPS (Caractères Par Seconde)** correspond au nombre de caractères affichés divisé par la durée du sous-titre.
-            
             C'est l'unité de mesure standard pour évaluer si le spectateur aura le temps de lire le texte tout en regardant l'image.
             """)
-
-        # --- CONTENU 2 ---
         with st.expander("Les seuils et couleurs utilisés"):
             st.markdown("""
-            Cet outil classe les sous-titres selon leur difficulté de lecture :
-            
             * 🟢 **Vert (≤ 17 CPS)** : Lecture confortable.
-            * 🟠 **Orange (17 - 23 CPS)** : Lecture rapide, attention requise.
-            * 🔴 **Rouge (> 23 CPS)** : Trop rapide, risque de décrochage du spectateur.
+            * 🟠 **Orange (17 - 23 CPS)** : Lecture rapide.
+            * 🔴 **Rouge (> 23 CPS)** : Trop rapide.
             """)
+        with st.expander("Signification des alertes ⚠️"):
+            st.markdown("""
+            Un panneau danger **⚠️** apparaît dans le rapport HTML si :
+            * Plus de **10%** des sous-titres sont dans la zone **Rouge**.
+            * Moins de **70%** des sous-titres sont dans la zone **Verte**.
             
-        # --- CONTENU 3 (Exemple à modifier) ---
-        with st.expander("Pourquoi certains sous-titres sont exclus ?"):
-            st.write("""
-            Le script ignore automatiquement les sous-titres purement techniques ou indicateurs sonores (ex: `...`, `♪ Musique ♪`) car ils faussent les statistiques de lecture.
+            Passez votre souris sur le panneau dans le rapport pour voir le détail.
             """)
 
-        # Tu peux rajouter d'autres blocs ici en copiant la structure "with st.expander..."
-
-    # --- ONGLET 1 : APPLICATION PRINCIPALE ---
+    # --- ONGLET APP ---
     with tab_app:
-        st.info("👇 Glissez-déposez vos fichiers **.srt** ci-dessous.", icon="📂")
+        st.info("👇 Glissez-déposez vos fichiers ci-dessous.", icon="📂")
 
-        uploaded_files = st.file_uploader(label="", type=["srt"], accept_multiple_files=True)
+        # Uploader avec clé dynamique pour permettre le reset
+        uploaded_files = st.file_uploader(
+            label="", 
+            type=["srt"], 
+            accept_multiple_files=True,
+            key=f"uploader_{st.session_state.uploader_key}"
+        )
 
+        # Si des fichiers sont présents, on affiche le bouton Reset en haut à droite
         if uploaded_files:
-            # Traitement avec barre de chargement
+            col_spacer, col_reset = st.columns([4, 1])
+            with col_reset:
+                st.button("🗑️ Tout effacer", on_click=reset_uploader, type="secondary")
+            
+            # Traitement
             with st.status("Traitement des fichiers...", expanded=True) as status:
                 results = []
                 for i, uploaded_file in enumerate(uploaded_files):
                     status.write(f"Analyse de `{uploaded_file.name}`...")
-                    
                     bytes_data = uploaded_file.getvalue()
                     try:
                         content = bytes_data.decode("utf-8")
@@ -268,27 +386,20 @@ def main():
 
             st.markdown("### 📂 Vos Rapports")
             
-            # --- AFFICHAGE DES RÉSULTATS SOUS FORME D'ACCORDÉONS ---
+            # Affichage des résultats
             for res in results:
-                # Chaque fichier est un "expander" (barre dépliable)
                 with st.expander(f"📄 {res['filename']}"):
-                    
-                    # 1. Bouton de téléchargement en haut de l'accordéon
                     st.download_button(
                         label="⬇️ Télécharger ce rapport HTML",
                         data=res["html"],
                         file_name=f"{res['stem']}_CPS.html",
                         mime="text/html",
-                        key=res['filename']
+                        key=f"dl_{res['filename']}"
                     )
-                    
                     st.divider()
-                    
-                    # 2. Prévisualisation directe du rapport HTML à l'intérieur
-                    # height=600 permet d'avoir une fenêtre défilante confortable
                     components.html(res["html"], height=600, scrolling=True)
 
-            # --- TÉLÉCHARGEMENT GLOBAL ---
+            # Téléchargement ZIP Global
             if len(results) > 1:
                 st.markdown("---")
                 zip_buffer = io.BytesIO()
