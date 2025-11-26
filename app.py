@@ -224,7 +224,7 @@ def generate_html_string(cues, source_filename: str) -> str:
         warning_html = ""
         # LOGIQUE WARNING
         if grp["name"] == "red" and grp["pct"] > 10:
-            warning_html = "<div class='warning-icon' title='Attention : Les sous-titres trop rapides (> 23 CPS) dépassent 10% du total.'>⚠️</div>"
+            warning_html = "<div class='warning-icon' title='Attention : Les sous-titres trop rapides (> 19 CPS) dépassent 10% du total.'>⚠️</div>"
         elif grp["name"] == "green" and grp["pct"] < 70:
             warning_html = "<div class='warning-icon' title='Attention : Moins de 70% des sous-titres sont dans la zone de confort (Vert).'>⚠️</div>"
 
