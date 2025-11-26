@@ -1,12 +1,12 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import re
 import html
 import io
 import zipfile
 
 # ==================================================================================
-# 1. & 2. & 3. LOGIQUE CPS ET GENERATION HTML (IDENTIQUE À L'ORIGINAL)
-# On garde exactement la même logique métier.
+# 1. & 2. & 3. LOGIQUE CPS ET GENERATION HTML (INCHANGÉE)
 # ==================================================================================
 
 cps_timecode_re = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)")
@@ -100,7 +100,6 @@ def parse_srt_content(content_str: str):
     return cues
 
 def generate_html_string(cues, source_filename: str) -> str:
-    # (Fonction HTML identique à la version précédente, je la condense pour la lisibilité ici)
     total_raw = len(cues)
     if total_raw == 0: return f"<h3>⚠️ {source_filename} : Vide ou mal formé.</h3>"
     real_cues = [c for c in cues if not is_indicator(c["text_display"])]
@@ -141,7 +140,7 @@ def generate_html_string(cues, source_filename: str) -> str:
         {"name": "red",    "cats": [5, 6, 7], "pct": pct_red},
     ]
     html_parts = []
-    # Version simplifiée du CSS pour l'exemple, le vrai est dans ton code original
+    # CSS Minifié pour l'app
     html_parts.append(f"""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>CPS - {html.escape(source_filename)}</title>
     <style>body {{ font-family: system-ui, sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 10px 40px; background: #f5f5f5; color: #333; }} h1 {{ font-size: 1.6rem; margin-bottom: 20px; }} .summary {{ background: #fff; border-radius: 6px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 20px; }} .summary-header {{ display: flex; align-items: center; justify-content: space-between; gap: 40px; margin-bottom: 12px; }} .pie-wrapper {{ flex-shrink: 0; flex-grow: 1; position: relative; display: flex; justify-content: center; min-width: 200px; }} .pie {{ width: 100%; height: 60px; border-radius: 4px; }} .barcode-wrapper {{ margin-top: 4px; }} .barcode {{ width: 100%; height: 16px; border-radius: 4px; }} .caption {{ font-size: 0.85em; color: #666; margin-top: 4px; }} .group-container {{ display: flex; margin-bottom: 8px; }} .group-list {{ flex-grow: 1; margin-right: 10px; }} .group-bracket {{ width: 90px; display: flex; align-items: center; flex-shrink: 0; }} .bracket-visual {{ width: 15px; align-self: stretch; border-right: 3px solid; border-top: 3px solid; border-bottom: 3px solid; border-top-right-radius: 8px; border-bottom-right-radius: 8px; margin-right: 10px; margin-top: 2px; margin-bottom: 2px; opacity: 0.8; }} .bracket-label {{ font-weight: 700; font-size: 1.1rem; }} .group-green .bracket-visual {{ border-color: #00d000; }} .group-green .bracket-label {{ color: #00a000; }} .group-orange .bracket-visual {{ border-color: #ff8c00; }} .group-orange .bracket-label {{ color: #d07000; }} .group-red .bracket-visual {{ border-color: #ff0000; }} .group-red .bracket-label {{ color: #c00000; }} details.cat-details {{ margin-bottom: 5px; border-radius: 4px; overflow: hidden; }} details.cat-details summary {{ cursor: pointer; padding: 6px 10px; font-weight: 600; display: flex; justify-content: space-between; list-style: none; outline: none; }} details.cat-details[open] summary .arrow {{ transform: rotate(90deg); }} .arrow {{ display: inline-block; margin-right: 6px; transition: transform 0.15s; }} .cat-content {{ padding: 6px 8px 10px; background: #fff; border-top: 1px solid rgba(0,0,0,0.05); }} table {{ width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 0.9rem; background: #fff; }} th, td {{ border-bottom: 1px solid #eee; padding: 4px 6px; text-align: left; vertical-align: top; }} th {{ background: #f9f9f9; position: sticky; top: 0; font-size: 0.85rem; color: #555; }} td:nth-child(5) {{ color: #444; }}</style></head><body>""")
     html_parts.append(f"<h1>Analyse CPS : {html.escape(source_filename)}</h1>")
@@ -191,72 +190,64 @@ def generate_html_string(cues, source_filename: str) -> str:
     return "".join(html_parts)
 
 # ==================================================================================
-# 4. NOUVELLE INTERFACE STREAMLIT (SEXY & SOBRE)
+# 4. INTERFACE STREAMLIT (Accordéons pour l'aide et les résultats)
 # ==================================================================================
 
 def main():
-    # Configuration de la page : Titre et icône dans l'onglet du navigateur
-    st.set_page_config(
-        page_title="SRT CPS Analyzer", 
-        page_icon="⏱️", 
-        layout="centered" # "centered" est souvent plus élégant pour des outils simples
-    )
+    st.set_page_config(page_title="SRT CPS Analyzer", page_icon="⏱️", layout="centered")
     
-    # Titre principal avec un peu de style
     st.markdown("# ⏱️ Analyseur de CPS pour Sous-titres")
     st.markdown("---")
 
-    # Création des onglets pour séparer l'application de l'aide
-    tab_app, tab_help = st.tabs(["🚀 Lancer l'analyse", "ℹ️ Comprendre les seuils (Aide)"])
+    tab_app, tab_help = st.tabs(["🚀 Lancer l'analyse", "ℹ️ Aide & FAQ"])
 
-    # --- ONGLET 2 : AIDE ET EXPLICATIONS (Le contenu "sobre et explicatif") ---
+    # --- ONGLET 2 : AIDE (MODIFIABLE FACILEMENT) ---
     with tab_help:
-        st.header("Qu'est-ce que le CPS ?")
-        st.markdown("""
-        Le **CPS (Caractères Par Seconde)** mesure la vitesse de lecture d'un sous-titre. 
-        C'est un indicateur crucial pour garantir que le spectateur a le temps de lire le texte tout en regardant l'image.
-        
-        * Un CPS **trop bas** peut rendre la lecture ennuyeuse.
-        * Un CPS **trop haut** rend le sous-titre impossible à lire intégralement.
-        """)
-        
-        st.subheader("Les Seuils utilisés dans cet outil")
-        st.markdown("Cet outil utilise une échelle de couleurs dégradée pour classer chaque sous-titre, du vert (optimal) au rouge foncé (beaucoup trop rapide).")
-        
-        # Un tableau Markdown propre pour les seuils
-        st.markdown("""
-        | Catégorie | Seuil CPS | Couleur | Description |
-        | :--- | :--- | :--- | :--- |
-        | **1. Optimal** | ≤ 12 | 🟢 Vert vif | Vitesse de lecture idéale, très confortable. |
-        | **2. Très lisible** | 12 - 15 | 🟢 Vert clair | Lecture facile pour la majorité. |
-        | **3. Lisible** | 15 - 17 | 🟡 Jaune/Vert | Acceptable, demande un peu plus d'attention. |
-        | **4. Rapide** | 17 - 19 | 🟠 Orange | Zone pivot. Commence à être difficile pour les lecteurs lents. |
-        | **5. Très rapide** | 19 - 23 | 🟠 Orange foncé | Difficile à lire intégralement. À éviter si possible. |
-        | **6. Trop rapide** | 23 - 28 | 🔴 Rouge | Illisible pour la plupart des gens en conditions réelles. |
-        | **7. Extrême** | > 28 | 🔴 Rouge foncé | Impossible à lire. |
-        """)
-        
-        st.info("💡 **Note :** Le rapport HTML généré offre une vue détaillée avec une 'accolade visuelle' montrant le pourcentage de sous-titres dans les zones Vertes, Oranges et Rouges.")
+        st.header("Foire Aux Questions")
+        st.markdown("Cliquez sur les questions ci-dessous pour voir les réponses.")
 
-    # --- ONGLET 1 : APPLICATION PRINCIPALE (Le côté "sexy" et fonctionnel) ---
+        # ========================================================
+        # ZONE À REMPLIR : COPIE-COLLE LES BLOCS CI-DESSOUS
+        # ========================================================
+
+        # --- CONTENU 1 ---
+        with st.expander("Qu'est-ce que le CPS ?"):
+            st.markdown("""
+            Le **CPS (Caractères Par Seconde)** correspond au nombre de caractères affichés divisé par la durée du sous-titre.
+            
+            C'est l'unité de mesure standard pour évaluer si le spectateur aura le temps de lire le texte tout en regardant l'image.
+            """)
+
+        # --- CONTENU 2 ---
+        with st.expander("Les seuils et couleurs utilisés"):
+            st.markdown("""
+            Cet outil classe les sous-titres selon leur difficulté de lecture :
+            
+            * 🟢 **Vert (≤ 17 CPS)** : Lecture confortable.
+            * 🟠 **Orange (17 - 23 CPS)** : Lecture rapide, attention requise.
+            * 🔴 **Rouge (> 23 CPS)** : Trop rapide, risque de décrochage du spectateur.
+            """)
+            
+        # --- CONTENU 3 (Exemple à modifier) ---
+        with st.expander("Pourquoi certains sous-titres sont exclus ?"):
+            st.write("""
+            Le script ignore automatiquement les sous-titres purement techniques ou indicateurs sonores (ex: `...`, `♪ Musique ♪`) car ils faussent les statistiques de lecture.
+            """)
+
+        # Tu peux rajouter d'autres blocs ici en copiant la structure "with st.expander..."
+
+    # --- ONGLET 1 : APPLICATION PRINCIPALE ---
     with tab_app:
-        # Un bloc d'info propre au lieu de texte en vrac
-        st.info("👇 Glissez-déposez vos fichiers **.srt** ci-dessous. L'analyse démarre automatiquement.", icon="📂")
+        st.info("👇 Glissez-déposez vos fichiers **.srt** ci-dessous.", icon="📂")
 
-        uploaded_files = st.file_uploader(
-            label="", # On cache le label par défaut car on a mis un st.info au dessus
-            type=["srt"], 
-            accept_multiple_files=True
-        )
+        uploaded_files = st.file_uploader(label="", type=["srt"], accept_multiple_files=True)
 
         if uploaded_files:
-            # Utilisation de st.status pour un feedback moderne pendant le traitement
-            with st.status("Analyse en cours...", expanded=True) as status:
+            # Traitement avec barre de chargement
+            with st.status("Traitement des fichiers...", expanded=True) as status:
                 results = []
-                
                 for i, uploaded_file in enumerate(uploaded_files):
-                    # Petit message pour chaque fichier traité
-                    status.write(f"Traitement de `{uploaded_file.name}`...")
+                    status.write(f"Analyse de `{uploaded_file.name}`...")
                     
                     bytes_data = uploaded_file.getvalue()
                     try:
@@ -272,51 +263,46 @@ def main():
                         "html": html_report,
                         "stem": uploaded_file.name.rsplit('.', 1)[0]
                     })
-                    # Petite barre de progression subtile si beaucoup de fichiers
-                    if len(uploaded_files) > 1:
-                        status.update(label=f"Analyse en cours ({i+1}/{len(uploaded_files)})...")
-
+                
                 status.update(label="✅ Analyse terminée !", state="complete", expanded=False)
 
-            st.markdown("---")
-            st.subheader("📂 Résultats")
-
-            # Présentation des résultats : Une section par fichier, encadrée proprement
-            for res in results:
-                # st.container(border=True) crée un joli cadre autour du résultat
-                with st.container(border=True):
-                    # Layout en colonnes pour aligner le nom et le bouton
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.markdown(f"**📄 Rapport pour :** `{res['filename']}`")
-                        # On pourrait ajouter un mini résumé ici, mais cela demanderait de refactoriser la fonction generate_html.
-                        # Pour l'instant, restons sobres.
-                    with col2:
-                        st.download_button(
-                            label="⬇️ Télécharger HTML",
-                            data=res["html"],
-                            file_name=f"{res['stem']}_CPS.html",
-                            mime="text/html",
-                            key=res['filename'] # Clé unique importante si plusieurs boutons
-                        )
+            st.markdown("### 📂 Vos Rapports")
             
-            # Si plusieurs fichiers, on propose aussi le ZIP global en bas
+            # --- AFFICHAGE DES RÉSULTATS SOUS FORME D'ACCORDÉONS ---
+            for res in results:
+                # Chaque fichier est un "expander" (barre dépliable)
+                with st.expander(f"📄 {res['filename']}"):
+                    
+                    # 1. Bouton de téléchargement en haut de l'accordéon
+                    st.download_button(
+                        label="⬇️ Télécharger ce rapport HTML",
+                        data=res["html"],
+                        file_name=f"{res['stem']}_CPS.html",
+                        mime="text/html",
+                        key=res['filename']
+                    )
+                    
+                    st.divider()
+                    
+                    # 2. Prévisualisation directe du rapport HTML à l'intérieur
+                    # height=600 permet d'avoir une fenêtre défilante confortable
+                    components.html(res["html"], height=600, scrolling=True)
+
+            # --- TÉLÉCHARGEMENT GLOBAL ---
             if len(results) > 1:
                 st.markdown("---")
-                st.markdown("### 📦 Tout télécharger")
                 zip_buffer = io.BytesIO()
                 with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
                     for res in results:
                         zf.writestr(f"{res['stem']}_CPS.html", res["html"])
                 
                 st.download_button(
-                    label="📥 Télécharger tous les rapports (ZIP)",
+                    label="📦 Télécharger TOUS les rapports (ZIP)",
                     data=zip_buffer.getvalue(),
                     file_name="Rapports_CPS.zip",
                     mime="application/zip",
-                    type="primary" # Bouton mis en avant
+                    type="primary"
                 )
 
-# Point d'entrée standard
 if __name__ == "__main__":
     main()
