@@ -6,7 +6,7 @@ import io
 import zipfile
 
 # ==================================================================================
-# 1. & 2. & 3. LOGIQUE CPS (INCHANGÉE)
+# LOGIQUE MÉTIER (Parsing + HTML) - INCHANGÉE
 # ==================================================================================
 
 cps_timecode_re = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)")
@@ -98,10 +98,6 @@ def parse_srt_content(content_str: str):
         index_counter += 1
     return cues
 
-# ==================================================================================
-# 3. GÉNÉRATION HTML (MODIFIÉE POUR LES WARNINGS ⚠️)
-# ==================================================================================
-
 def generate_html_string(cues, source_filename: str) -> str:
     total_raw = len(cues)
     if total_raw == 0: return f"<h3>⚠️ {source_filename} : Vide ou mal formé.</h3>"
@@ -113,7 +109,6 @@ def generate_html_string(cues, source_filename: str) -> str:
     counts = {i: 0 for i in range(1, 8)}
     for c in real_cues: counts[c["category"]] += 1
     
-    # Calcul des stats pour HTML
     cps_values = [c["cps"] for c in real_cues if c["duration"] > 0]
     avg_cps = sum(cps_values) / len(cps_values) if cps_values else 0.0
     median_cps = 0.0
@@ -151,7 +146,7 @@ def generate_html_string(cues, source_filename: str) -> str:
     ]
 
     html_parts = []
-    # CSS incluant le style pour le WARNING
+    # CSS AVEC WARNING STYLES
     html_parts.append(f"""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>CPS - {html.escape(source_filename)}</title>
     <style>
     body {{ font-family: system-ui, sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 10px 40px; background: #f5f5f5; color: #333; }} 
@@ -167,12 +162,12 @@ def generate_html_string(cues, source_filename: str) -> str:
     .group-list {{ flex-grow: 1; margin-right: 10px; }} 
     .group-bracket {{ width: 90px; display: flex; align-items: center; flex-shrink: 0; position: relative; }} 
     
-    /* STYLE ACCOLADE */
+    /* ACCOLADE */
     .bracket-visual {{ width: 15px; align-self: stretch; border-right: 3px solid; border-top: 3px solid; border-bottom: 3px solid; border-top-right-radius: 8px; border-bottom-right-radius: 8px; margin-right: 10px; margin-top: 2px; margin-bottom: 2px; opacity: 0.8; }} 
     .bracket-label-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; }}
     .bracket-label {{ font-weight: 700; font-size: 1.1rem; line-height: 1.1; }} 
     
-    /* STYLE WARNING */
+    /* WARNING */
     .warning-icon {{ font-size: 1.2rem; cursor: help; margin-top: 4px; animation: pulse 2s infinite; }}
     @keyframes pulse {{ 0% {{ transform: scale(1); opacity: 1; }} 50% {{ transform: scale(1.1); opacity: 0.8; }} 100% {{ transform: scale(1); opacity: 1; }} }}
     
@@ -193,7 +188,6 @@ def generate_html_string(cues, source_filename: str) -> str:
     
     html_parts.append(f"<h1>Analyse CPS : {html.escape(source_filename)}</h1>")
     
-    # Pie & Barcode
     sorted_by_cps = sorted(real_cues, key=lambda c: c["cps"])
     if not sorted_by_cps: pie_bg = "#ddd"
     else:
@@ -227,8 +221,8 @@ def generate_html_string(cues, source_filename: str) -> str:
         has_content = any(counts[c] > 0 for c in grp["cats"])
         if not has_content: continue
         
-        # LOGIQUE DES WARNINGS ICI
         warning_html = ""
+        # LOGIQUE WARNING
         if grp["name"] == "red" and grp["pct"] > 10:
             warning_html = "<div class='warning-icon' title='Attention : Les sous-titres trop rapides (> 23 CPS) dépassent 10% du total.'>⚠️</div>"
         elif grp["name"] == "green" and grp["pct"] < 70:
@@ -247,72 +241,21 @@ def generate_html_string(cues, source_filename: str) -> str:
                 txt = html.escape(c["text_display"][:300]).replace("&lt;br&gt;", "<br>")
                 html_parts.append(f"<tr><td>{c['index']}</td><td>{c['start']} → {c['end']}</td><td>{c['duration']:.2f}s</td><td>{c['cps']:.2f}</td><td>{txt}</td></tr>")
             html_parts.append("</table></div></details>")
-        
-        # Insertion du warning sous le pourcentage
         html_parts.append(f"</div><div class='group-bracket'><div class='bracket-visual'></div><div class='bracket-label-container'><div class='bracket-label'>{grp['pct']:.1f}%</div>{warning_html}</div></div></div>")
-        
     html_parts.append("</div></body></html>")
     return "".join(html_parts)
 
 # ==================================================================================
-# 4. INTERFACE STREAMLIT (AVEC TRADUCTION CSS + BOUTON RESET)
+# APP STREAMLIT (Version Anglaise Standard)
 # ==================================================================================
 
 def main():
     st.set_page_config(page_title="SRT CPS Analyzer", page_icon="⏱️", layout="centered")
     
-    # --- CSS HACK POUR LA TRADUCTION ET LE STYLE ---
-    # C'est ici qu'on force l'affichage en français du File Uploader
-    st.markdown("""
-    <style>
-        /* Traduction de "Drag and drop files here" */
-        [data-testid='stFileUploaderDropzoneInstructions'] > div:first-child { visibility: hidden; height: 0; }
-        [data-testid='stFileUploaderDropzoneInstructions'] > div:first-child::after {
-            content: "Glissez-déposez vos fichiers .srt ici";
-            visibility: visible;
-            display: block;
-            height: auto;
-            font-size: 1.2rem;
-            margin-bottom: 10px;
-        }
-        
-        /* Traduction de "Limit 200MB per file" */
-        [data-testid='stFileUploaderDropzoneInstructions'] > div:nth-child(2) { visibility: hidden; height: 0; }
-        [data-testid='stFileUploaderDropzoneInstructions'] > div:nth-child(2)::after {
-            content: "Limite 200MB par fichier • SRT";
-            visibility: visible;
-            display: block;
-            height: auto;
-            font-size: 0.8rem;
-        }
-
-        /* Traduction du bouton "Browse files" - C'est plus délicat, on masque et on réécrit par dessus */
-        button[data-testid="stBaseButton-secondary"] {
-            position: relative;
-            color: transparent !important;
-        }
-        button[data-testid="stBaseButton-secondary"]::after {
-            content: "Parcourir les fichiers";
-            position: absolute;
-            color: rgb(49, 51, 63); /* Couleur texte standard */
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            white-space: nowrap;
-        }
-        /* Ajustement couleur texte bouton pour mode sombre éventuel */
-        @media (prefers-color-scheme: dark) {
-            button[data-testid="stBaseButton-secondary"]::after {
-                color: white;
-            }
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
     st.markdown("# ⏱️ Analyseur de CPS pour Sous-titres")
     st.markdown("---")
 
-    # Gestion de l'état pour le reset
+    # Initialisation de la clé unique pour le bouton Reset
     if 'uploader_key' not in st.session_state:
         st.session_state.uploader_key = 0
 
@@ -321,7 +264,6 @@ def main():
 
     tab_app, tab_help = st.tabs(["🚀 Lancer l'analyse", "ℹ️ Aide & FAQ"])
 
-    # --- ONGLET AIDE ---
     with tab_help:
         st.header("Foire Aux Questions")
         with st.expander("Qu'est-ce que le CPS ?"):
@@ -344,25 +286,25 @@ def main():
             Passez votre souris sur le panneau dans le rapport pour voir le détail.
             """)
 
-    # --- ONGLET APP ---
     with tab_app:
-        st.info("👇 Glissez-déposez vos fichiers ci-dessous.", icon="📂")
+        st.info("👇 Glissez-déposez vos fichiers **.srt** ci-dessous.", icon="📂")
 
-        # Uploader avec clé dynamique pour permettre le reset
+        # Uploader Standard (Anglais)
         uploaded_files = st.file_uploader(
-            label="", 
+            label="Upload SRT files", 
             type=["srt"], 
             accept_multiple_files=True,
+            label_visibility="collapsed", # On cache le label texte car on a mis st.info au dessus
             key=f"uploader_{st.session_state.uploader_key}"
         )
 
-        # Si des fichiers sont présents, on affiche le bouton Reset en haut à droite
+        # Si des fichiers sont présents, on affiche les boutons d'actions
         if uploaded_files:
-            col_spacer, col_reset = st.columns([4, 1])
-            with col_reset:
-                st.button("🗑️ Tout effacer", on_click=reset_uploader, type="secondary")
-            
-            # Traitement
+            # Bouton Reset bien visible
+            col1, col2 = st.columns([0.85, 0.15])
+            with col2:
+                st.button("🗑️ Reset", on_click=reset_uploader, help="Tout effacer")
+
             with st.status("Traitement des fichiers...", expanded=True) as status:
                 results = []
                 for i, uploaded_file in enumerate(uploaded_files):
@@ -386,7 +328,6 @@ def main():
 
             st.markdown("### 📂 Vos Rapports")
             
-            # Affichage des résultats
             for res in results:
                 with st.expander(f"📄 {res['filename']}"):
                     st.download_button(
@@ -399,7 +340,6 @@ def main():
                     st.divider()
                     components.html(res["html"], height=600, scrolling=True)
 
-            # Téléchargement ZIP Global
             if len(results) > 1:
                 st.markdown("---")
                 zip_buffer = io.BytesIO()
