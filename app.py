@@ -25,7 +25,7 @@ def inject_gtm(gtm_id):
     components.html(gtm_code, height=0, width=0)
 
 # ==================================================================================
-# LOGIQUE MÉTIER (Inchangée)
+# 1. & 2. LOGIQUE MÉTIER CPS (Inchangée)
 # ==================================================================================
 
 cps_timecode_re = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)")
@@ -118,7 +118,7 @@ def parse_srt_content(content_str: str):
     return cues
 
 # ==================================================================================
-# GÉNÉRATION HTML (V8 - Focus Accessibilité)
+# GÉNÉRATION HTML (Expertise Technique)
 # ==================================================================================
 
 def generate_html_string(cues, source_filename: str) -> str:
@@ -170,8 +170,8 @@ def generate_html_string(cues, source_filename: str) -> str:
 
     html_parts = []
     
-    # CSS Clean & Pro
-    html_parts.append(f"""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Audit CPS - {html.escape(source_filename)}</title>
+    # CSS Sobre et Institutionnel
+    html_parts.append(f"""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Audit Conformité - {html.escape(source_filename)}</title>
     <style>
     body {{ font-family: 'Segoe UI', system-ui, sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 10px 40px; background: #f5f5f5; color: #333; }} 
     h1 {{ font-size: 1.6rem; margin-bottom: 5px; color: #111; }} 
@@ -214,10 +214,9 @@ def generate_html_string(cues, source_filename: str) -> str:
     tr:hover td {{ background: #f9f9f9; }}
     </style></head><body>""")
     
-    html_parts.append(f"<h1>Audit CPS : {html.escape(source_filename)}</h1>")
-    html_parts.append(f"<div class='subtitle'>Analyse de conformité Charte 2011 • Densité & Accessibilité</div>")
+    html_parts.append(f"<h1>Audit Conformité : {html.escape(source_filename)}</h1>")
+    html_parts.append(f"<div class='subtitle'>Contrôle de densité (Standard Charte Arcom 2011)</div>")
     
-    # VISUALIZATIONS
     sorted_by_cps = sorted(real_cues, key=lambda c: c["cps"])
     if not sorted_by_cps: pie_bg = "#ddd"
     else:
@@ -253,13 +252,13 @@ def generate_html_string(cues, source_filename: str) -> str:
         if not has_content: continue
         
         warning_html = ""
-        # LOGIQUE D'ALERTE CHARTE 2011
+        # LOGIQUE D'ALERTE TECHNIQUE
         title_attr = ""
         if grp["name"] == "red" and grp["pct"] > 10:
-            title_attr = "Ce volume de sous-titres très rapides (> 19 CPS) compromet l'accessibilité pour les sourds profonds."
+            title_attr = "Seuil critique dépassé (>10% de sous-titres très rapides)."
             warning_html = f"<div class='warning-icon' title='{title_attr}'>⚠️</div>"
         elif grp["name"] == "green" and grp["pct"] < 70:
-            title_attr = "La part de sous-titres confortables est inférieure au standard recommandé (70%)."
+            title_attr = "Taux de confort insuffisant (<70% de sous-titres standard)."
             warning_html = f"<div class='warning-icon' title='{title_attr}'>⚠️</div>"
 
         html_parts.append(f"<div class='group-container group-{grp['name']}'><div class='group-list'>")
@@ -280,42 +279,34 @@ def generate_html_string(cues, source_filename: str) -> str:
     return "".join(html_parts)
 
 # ==================================================================================
-# APP STREAMLIT (Version Expert V8)
+# APP STREAMLIT (Version Expert V9 - "Le Juge de Paix")
 # ==================================================================================
 
 def main():
-    st.set_page_config(page_title="Audit Lisibilité Charte 2011", page_icon="⚖️", layout="centered")
+    st.set_page_config(page_title="Audit Conformité SME", page_icon="⚖️", layout="centered")
     
     # --- GTM ---
     GTM_ID = "GTM-W972MJXS"
     inject_gtm(GTM_ID)
     
-    # --- SIDEBAR EXPERTISE (CV / LEGITIMITÉ) ---
+    # --- SIDEBAR (Expertise Sobre) ---
     with st.sidebar:
-        st.markdown("### ⚖️ Audit de Conformité")
-        st.caption("v1.0 • Outil de contrôle")
+        st.markdown("### ⚖️ Outil de contrôle")
         st.info("""
-        Cet outil analyse la densité des fichiers SME pour vérifier leur compatibilité avec les exigences d'accessibilité (Loi 2005 / Charte Arcom).
+        Audit technique de la densité des sous-titres selon les recommandations de la **Charte Qualité 2011**.
         """)
         
         st.markdown("---")
-        st.markdown("#### 👤 Expertise")
-        st.markdown("**Thierry Jullien**")
+        st.markdown("#### 👤 Crédits")
         st.caption("""
-        * Co-auteur Charte Qualité 2011 (CSA/Arcom)
-        * Ex-Président du CAASEM
-        * Membre fondateur AVA
-        * Expert accessibilité depuis 2005
-        """)
-        st.markdown("---")
-        st.markdown("#### 🎯 Objectif")
-        st.caption("""
-        Distinguer le sous-titrage adapté (accessible) de la transcription littérale (excluante).
+        **Thierry Jullien**
+        * Expert accessibilité
+        * Co-auteur Charte Qualité 2011
         """)
 
     # --- HEADER ---
-    st.title("⚖️ Audit de Lisibilité SME")
-    st.markdown("**Contrôle de conformité / Charte Arcom 2011**")
+    st.title("⚖️ Audit de Conformité SME")
+    st.markdown("**Contrôle de densité / Standard Charte Arcom 2011**")
     st.markdown("---")
 
     if 'uploader_key' not in st.session_state:
@@ -324,38 +315,30 @@ def main():
     def reset_uploader():
         st.session_state.uploader_key += 1
 
-    tab_audit, tab_context = st.tabs(["📊 Lancer l'Audit", "ℹ️ Comprendre l'enjeu"])
+    tab_audit, tab_context = st.tabs(["📊 Lancer l'Audit", "ℹ️ Référentiel"])
 
-    # --- ONGLET CONTEXTE (MANIFESTE) ---
+    # --- ONGLET RÉFÉRENTIEL (Factuel) ---
     with tab_context:
-        st.header("Accessibilité vs Affichage")
+        st.header("Critères de densité (CPS)")
         st.markdown("""
-        La loi handicap de 2005 impose l'accessibilité, pas seulement la présence de texte à l'écran.
-        Un sous-titrage dense, calqué sur le débit oral, est lisible pour un entendant (lecteur fluent), 
-        mais devient une barrière infranchissable pour de nombreux sourds de naissance ou malentendants âgés.
+        L'analyse de densité permet de vérifier si le fichier respecte les temps de lecture nécessaires à l'accessibilité.
         """)
         
-        st.markdown("### Le Diagnostic par la Densité")
-        st.info("""
-        L'analyse statistique de la densité (CPS) permet de révéler la méthode de fabrication d'un fichier.
-        Elle différencie le travail d'adaptation (Text-to-Subtitle) de la simple transcription (Text-to-Text).
-        """)
-
         col1, col2 = st.columns(2)
         with col1:
-            st.success("**✅ L'Adaptation (SME)**")
-            st.caption("Le texte est resserré pour libérer du temps de lecture.")
-            st.markdown("- **Vert (>70%)** : Confort de lecture")
-            st.markdown("- **Rouge (<10%)** : Pics exceptionnels")
+            st.success("**✅ Standard Charte 2011**")
+            st.caption("Lecture confortable (Accessibilité réelle)")
+            st.markdown("- **Vert (>70%)** : Majoritaire")
+            st.markdown("- **Rouge (<10%)** : Marginal")
         with col2:
-            st.error("**❌ La Transcription**")
-            st.caption("Le texte suit l'audio sans filtre, saturant la cognition visuelle.")
+            st.error("**❌ Densité Excessive**")
+            st.caption("Surcharge cognitive (Non conforme)")
             st.markdown("- **Vert (<60%)** : Insuffisant")
-            st.markdown("- **Rouge (>15%)** : Exclusion du public")
+            st.markdown("- **Rouge (>15%)** : Critique")
 
-    # --- ONGLET AUDIT (APP) ---
+    # --- ONGLET AUDIT ---
     with tab_audit:
-        st.info("👇 Déposez vos fichiers **.srt** pour audit de conformité.", icon="📂")
+        st.info("👇 Déposez vos fichiers **.srt** pour contrôle.", icon="📂")
 
         uploaded_files = st.file_uploader(
             label="Upload SRT files", 
@@ -370,23 +353,20 @@ def main():
             with col2:
                 st.button("🗑️ Reset", on_click=reset_uploader, help="Tout effacer")
 
-            with st.status("Audit en cours...", expanded=True) as status:
+            with st.status("Audit technique en cours...", expanded=True) as status:
                 results = []
                 for i, uploaded_file in enumerate(uploaded_files):
-                    status.write(f"Analyse de `{uploaded_file.name}`...")
+                    status.write(f"Traitement de `{uploaded_file.name}`...")
                     
-                    # Lecture
                     bytes_data = uploaded_file.getvalue()
                     try:
                         content = bytes_data.decode("utf-8")
                     except UnicodeDecodeError:
                         content = bytes_data.decode("latin-1")
                     
-                    # Parsing
                     cues = parse_srt_content(content)
                     html_report = generate_html_string(cues, uploaded_file.name)
                     
-                    # Calcul stats
                     real_cues = [c for c in cues if not is_indicator(c["text_display"])]
                     total = len(real_cues)
                     stats = {i: 0 for i in range(1, 8)}
@@ -396,7 +376,7 @@ def main():
                     pct_orange = (stats[4] / total * 100) if total else 0
                     pct_red = (sum(stats[i] for i in range(5, 8)) / total * 100) if total else 0
                     
-                    # Verdict Logic (Basé sur tes seuils)
+                    # Verdict Factuel
                     is_compliant = (pct_green >= 70) and (pct_red <= 10)
                     
                     results.append({
@@ -411,20 +391,20 @@ def main():
                 
                 status.update(label="✅ Audit terminé", state="complete", expanded=False)
 
-            st.markdown("### 📄 Résultats de l'audit")
+            st.markdown("### 📄 Rapports d'audit")
             
             for res in results:
                 with st.container(border=True):
-                    # EN-TÊTE AVEC VERDICT
+                    # VERDICT FACTUEL
                     c1, c2 = st.columns([3, 1])
                     with c1:
                         st.subheader(f"`{res['filename']}`")
                         if res['compliant']:
-                            st.success("✅ **PROFIL STANDARD DÉTECTÉ (Conforme)**")
-                            st.caption("Distribution statistique cohérente avec une adaptation humaine.")
+                            st.success("✅ **PROFIL DE DENSITÉ CONFORME**")
+                            st.caption("Distribution respectant les seuils de la Charte 2011.")
                         else:
-                            st.error("⚠️ **ALERTE DENSITÉ (Non Conforme)**")
-                            st.caption("Profil statistique caractéristique d'une transcription littérale non adaptée.")
+                            st.error("⚠️ **PROFIL DE DENSITÉ CRITIQUE (Non conforme)**")
+                            st.caption("Dépassement des seuils de densité recommandés.")
                     
                     with c2:
                         st.download_button(
@@ -437,38 +417,28 @@ def main():
 
                     st.divider()
 
-                    # GRAPHIQUE COMPARATIF (Altair)
-                    # Données pour le chart
+                    # GRAPHIQUE COMPARATIF (Fichier vs Gabarit)
                     source_data = pd.DataFrame([
-                        {'Zone': '1. Confort (Vert)', 'Pourcentage': res['pct_green'], 'Type': 'Votre Fichier', 'Color': '#2E7D32'},
-                        {'Zone': '2. Rapide (Orange)', 'Pourcentage': res['pct_orange'], 'Type': 'Votre Fichier', 'Color': '#EF6C00'},
-                        {'Zone': '3. Excessif (Rouge)', 'Pourcentage': res['pct_red'], 'Type': 'Votre Fichier', 'Color': '#C62828'},
+                        {'Zone': '1. Confort (Vert)', 'Pourcentage': res['pct_green'], 'Type': 'Fichier Analysé', 'Color': '#2E7D32'},
+                        {'Zone': '2. Rapide (Orange)', 'Pourcentage': res['pct_orange'], 'Type': 'Fichier Analysé', 'Color': '#EF6C00'},
+                        {'Zone': '3. Critique (Rouge)', 'Pourcentage': res['pct_red'], 'Type': 'Fichier Analysé', 'Color': '#C62828'},
                         
-                        {'Zone': '1. Confort (Vert)', 'Pourcentage': 80, 'Type': 'Référence (Charte 2011)', 'Color': '#81C784'},
-                        {'Zone': '2. Rapide (Orange)', 'Pourcentage': 15, 'Type': 'Référence (Charte 2011)', 'Color': '#FFB74D'},
-                        {'Zone': '3. Excessif (Rouge)', 'Pourcentage': 5, 'Type': 'Référence (Charte 2011)', 'Color': '#E57373'},
+                        {'Zone': '1. Confort (Vert)', 'Pourcentage': 80, 'Type': 'Gabarit Charte 2011', 'Color': '#81C784'},
+                        {'Zone': '2. Rapide (Orange)', 'Pourcentage': 15, 'Type': 'Gabarit Charte 2011', 'Color': '#FFB74D'},
+                        {'Zone': '3. Critique (Rouge)', 'Pourcentage': 5, 'Type': 'Gabarit Charte 2011', 'Color': '#E57373'},
                     ])
                     
-                    # Chart Altair
                     chart = alt.Chart(source_data).mark_bar().encode(
                         x=alt.X('Pourcentage:Q', scale=alt.Scale(domain=[0, 100]), title=None),
                         y=alt.Y('Type:N', title=None, axis=alt.Axis(labels=True)),
                         color=alt.Color('Color:N', scale=None, legend=None),
-                        order=alt.Order('Zone', sort='ascending'), # Ordre d'empilement
+                        order=alt.Order('Zone', sort='ascending'),
                         column=alt.Column('Zone:N', header=alt.Header(title=None, labelFontSize=12, labelFontWeight='bold'))
-                    ).properties(
-                        height=60,
-                        width=180 # Largeur de chaque colonne
-                    ).configure_axis(
-                        grid=False
-                    ).configure_view(
-                        strokeWidth=0
-                    )
+                    ).properties(height=60, width=180).configure_axis(grid=False).configure_view(strokeWidth=0)
                     
                     st.altair_chart(chart, use_container_width=False)
                     
-                    # Détails
-                    with st.expander("👁️ Voir le détail des sous-titres"):
+                    with st.expander("👁️ Détail des mesures"):
                         components.html(res["html"], height=500, scrolling=True)
 
 if __name__ == "__main__":
