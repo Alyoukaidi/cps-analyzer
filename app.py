@@ -4,18 +4,14 @@ import re
 import html
 import io
 import zipfile
+import pandas as pd # Nécessaire pour le nouveau graphique comparatif
 
 # ==================================================================================
 # 0. GOOGLE TAG MANAGER (GTM)
 # ==================================================================================
 
 def inject_gtm(gtm_id):
-    """
-    Injecte le code Google Tag Manager (Script + Noscript)
-    """
     if not gtm_id: return
-    
-    # Attention : les doubles accolades {{ }} sont nécessaires pour éviter les conflits avec Python
     gtm_code = f"""
     <script>(function(w,d,s,l,i){{w[l]=w[l]||[];w[l].push({{'gtm.start':
     new Date().getTime(),event:'gtm.js'}});var f=d.getElementsByTagName(s)[0],
@@ -25,12 +21,10 @@ def inject_gtm(gtm_id):
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={gtm_id}"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     """
-    
-    # On injecte le code HTML/JS de manière invisible
     components.html(gtm_code, height=0, width=0)
 
 # ==================================================================================
-# 1. & 2. LOGIQUE MÉTIER CPS (INCHANGÉE)
+# 1. & 2. LOGIQUE MÉTIER CPS
 # ==================================================================================
 
 cps_timecode_re = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)")
@@ -186,12 +180,9 @@ def generate_html_string(cues, source_filename: str) -> str:
     .group-list {{ flex-grow: 1; margin-right: 10px; }} 
     .group-bracket {{ width: 90px; display: flex; align-items: center; flex-shrink: 0; position: relative; }} 
     
-    /* ACCOLADE */
     .bracket-visual {{ width: 15px; align-self: stretch; border-right: 3px solid; border-top: 3px solid; border-bottom: 3px solid; border-top-right-radius: 8px; border-bottom-right-radius: 8px; margin-right: 10px; margin-top: 2px; margin-bottom: 2px; opacity: 0.8; }} 
     .bracket-label-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; }}
     .bracket-label {{ font-weight: 700; font-size: 1.1rem; line-height: 1.1; }} 
-    
-    /* WARNING */
     .warning-icon {{ font-size: 1.2rem; cursor: help; margin-top: 4px; animation: pulse 2s infinite; }}
     @keyframes pulse {{ 0% {{ transform: scale(1); opacity: 1; }} 50% {{ transform: scale(1.1); opacity: 0.8; }} 100% {{ transform: scale(1); opacity: 1; }} }}
     
@@ -246,7 +237,6 @@ def generate_html_string(cues, source_filename: str) -> str:
         if not has_content: continue
         
         warning_html = ""
-        # LOGIQUE WARNING CORRIGÉE (> 19 CPS)
         if grp["name"] == "red" and grp["pct"] > 10:
             warning_html = "<div class='warning-icon' title='Attention : Les sous-titres très rapides (> 19 CPS) dépassent 10% du total.'>⚠️</div>"
         elif grp["name"] == "green" and grp["pct"] < 70:
@@ -270,19 +260,37 @@ def generate_html_string(cues, source_filename: str) -> str:
     return "".join(html_parts)
 
 # ==================================================================================
-# APP STREAMLIT (Version avec Google Tag Manager)
+# APP STREAMLIT (Version Expert V7)
 # ==================================================================================
 
 def main():
-    st.set_page_config(page_title="SRT CPS Analyzer", page_icon="⏱️", layout="centered")
+    st.set_page_config(page_title="Audit Lisibilité Charte 2011", page_icon="⚖️", layout="centered")
     
-    # --- CONFIG GTM ---
-    # Ton ID fourni
-    GTM_ID = "GTM-W972MJXS" 
+    # --- GTM ---
+    GTM_ID = "GTM-W972MJXS"
     inject_gtm(GTM_ID)
-    # ------------------
+    
+    # --- SIDEBAR EXPERTISE ---
+    with st.sidebar:
+        st.markdown("### ⚖️ Outil de contrôle")
+        st.info("""
+        **Cet outil vérifie la conformité des fichiers SME avec les exigences de lisibilité (Charte Arcom 2011).**
+        
+        Il vise à différencier une adaptation humaine soignée d'une transcription littérale automatisée.
+        """)
+        st.markdown("---")
+        st.markdown("#### 👤 À propos")
+        st.caption("""
+        **Développé par un expert accessibilité :**
+        * Co-auteur de la Charte Qualité Arcom 2011
+        * Ex-Président du CAASEM
+        * Membre fondateur AVA
+        """)
+        st.markdown("---")
+        st.caption("v1.0 - Usage libre pour le contrôle qualité.")
 
-    st.markdown("# ⏱️ Analyseur de CPS pour Sous-titres")
+    st.title("⚖️ Audit de Lisibilité SME")
+    st.markdown("**Contrôle de conformité / Charte Arcom 2011**")
     st.markdown("---")
 
     if 'uploader_key' not in st.session_state:
@@ -291,32 +299,41 @@ def main():
     def reset_uploader():
         st.session_state.uploader_key += 1
 
-    tab_app, tab_help = st.tabs(["🚀 Lancer l'analyse", "ℹ️ Aide & FAQ"])
+    tab_audit, tab_context = st.tabs(["📊 Lancer l'Audit", "ℹ️ Comprendre l'enjeu"])
 
-    with tab_help:
-        st.header("Foire Aux Questions")
-        with st.expander("Qu'est-ce que le CPS ?"):
-            st.markdown("""
-            Le **CPS (Caractères Par Seconde)** correspond au nombre de caractères affichés divisé par la durée du sous-titre.
-            C'est l'unité de mesure standard pour évaluer si le spectateur aura le temps de lire le texte tout en regardant l'image.
-            """)
-        with st.expander("Les seuils et couleurs utilisés"):
-            st.markdown("""
-            * 🟢 **Vert (≤ 17 CPS)** : Lecture confortable.
-            * 🟠 **Orange (17 - 19 CPS)** : Lecture rapide.
-            * 🔴 **Rouge (> 19 CPS)** : Très rapide / Trop rapide.
-            """)
-        with st.expander("Signification des alertes ⚠️"):
-            st.markdown("""
-            Un panneau danger **⚠️** apparaît dans le rapport HTML si :
-            * Plus de **10%** des sous-titres sont dans la zone **Rouge** (> 19 CPS).
-            * Moins de **70%** des sous-titres sont dans la zone **Verte**.
-            
-            Passez votre souris sur le panneau dans le rapport pour voir le détail.
-            """)
+    # --- ONGLET CONTEXTE (MANIFESTE) ---
+    with tab_context:
+        st.header("Le CPS : Un outil, pas un verdict")
+        st.write("""
+        Le CPS (Caractères Par Seconde) n'est pas une vérité absolue. Il existe des cas où le dépasser est justifié (formules figées, contexte visuel évident).
+        
+        Cependant, **l'analyse statistique** permet de révéler la méthode de fabrication d'un fichier :
+        """)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.success("**✅ L'Adaptation Humaine**")
+            st.caption("L'adaptateur reformule pour respecter le temps de lecture.")
+            st.markdown("- **Vert (>70%)** : Majoritaire")
+            st.markdown("- **Rouge (<10%)** : Exceptionnel")
+        with col2:
+            st.error("**❌ La Transcription Brute**")
+            st.caption("L'IA ou le low-cost transcrit tout ce qui est dit, sans adapter.")
+            st.markdown("- **Vert (<60%)** : Insuffisant")
+            st.markdown("- **Rouge (>15%)** : Illisible")
 
-    with tab_app:
-        st.info("👇 Glissez-déposez vos fichiers **.srt** ci-dessous.", icon="📂")
+        st.markdown("---")
+        st.subheader("Les 3 constats de l'expert")
+        with st.expander("1. Le CPS ne mesure pas la charge cognitive réelle"):
+            st.write("Le CPS traite tous les caractères de la même façon (lettres, chiffres, ponctuation). Or, l'œil lit des mots, pas des signes. Une phrase bien ponctuée est plus facile à lire, même si elle contient plus de caractères.")
+        with st.expander("2. Quand satisfaire le CPS dégrade la lisibilité"):
+            st.write("Reformuler à l'extrême pour 'passer au vert' peut nuire à la compréhension (synonymes rares) ou à la confiance du spectateur (décalage avec la lecture labiale). L'accessibilité, c'est l'équilibre.")
+        with st.expander("3. L'industrialisation menace l'accessibilité"):
+            st.write("Les outils de transcription automatique (IA) excellent dans l'audio-to-text mais échouent dans le text-to-subtitle. Ils produisent des découpages 'au kilomètre' qui saturent la lecture.")
+
+    # --- ONGLET AUDIT (APP) ---
+    with tab_audit:
+        st.info("👇 Déposez vos fichiers **.srt** pour vérification.", icon="📂")
 
         uploaded_files = st.file_uploader(
             label="Upload SRT files", 
@@ -331,55 +348,96 @@ def main():
             with col2:
                 st.button("🗑️ Reset", on_click=reset_uploader, help="Tout effacer")
 
-            with st.status("Traitement des fichiers...", expanded=True) as status:
+            with st.status("Audit en cours...", expanded=True) as status:
                 results = []
                 for i, uploaded_file in enumerate(uploaded_files):
                     status.write(f"Analyse de `{uploaded_file.name}`...")
+                    
+                    # Lecture
                     bytes_data = uploaded_file.getvalue()
                     try:
                         content = bytes_data.decode("utf-8")
                     except UnicodeDecodeError:
                         content = bytes_data.decode("latin-1")
                     
+                    # Parsing
                     cues = parse_srt_content(content)
                     html_report = generate_html_string(cues, uploaded_file.name)
+                    
+                    # Calcul des pourcentages pour le verdict
+                    real_cues = [c for c in cues if not is_indicator(c["text_display"])]
+                    total = len(real_cues)
+                    stats = {i: 0 for i in range(1, 8)}
+                    for c in real_cues: stats[c["category"]] += 1
+                    
+                    pct_green = (sum(stats[i] for i in range(1, 4)) / total * 100) if total else 0
+                    pct_red = (sum(stats[i] for i in range(5, 8)) / total * 100) if total else 0
+                    
+                    # Verdict Logic
+                    is_compliant = (pct_green >= 70) and (pct_red <= 10)
                     
                     results.append({
                         "filename": uploaded_file.name,
                         "html": html_report,
-                        "stem": uploaded_file.name.rsplit('.', 1)[0]
+                        "stem": uploaded_file.name.rsplit('.', 1)[0],
+                        "pct_green": pct_green,
+                        "pct_orange": (stats[4]/total*100) if total else 0,
+                        "pct_red": pct_red,
+                        "compliant": is_compliant
                     })
                 
-                status.update(label="✅ Analyse terminée !", state="complete", expanded=False)
+                status.update(label="✅ Audit terminé", state="complete", expanded=False)
 
-            st.markdown("### 📂 Vos Rapports")
+            st.markdown("### 📄 Résultats de l'audit")
             
             for res in results:
-                with st.expander(f"📄 {res['filename']}"):
-                    st.download_button(
-                        label="⬇️ Télécharger ce rapport HTML",
-                        data=res["html"],
-                        file_name=f"{res['stem']}_CPS.html",
-                        mime="text/html",
-                        key=f"dl_{res['filename']}"
-                    )
-                    st.divider()
-                    components.html(res["html"], height=600, scrolling=True)
+                with st.container(border=True):
+                    # EN-TÊTE AVEC VERDICT
+                    c1, c2 = st.columns([3, 1])
+                    with c1:
+                        st.subheader(f"`{res['filename']}`")
+                        if res['compliant']:
+                            st.success("✅ **PROFIL STANDARD DÉTECTÉ** (Adaptation probable)")
+                        else:
+                            st.error("⚠️ **ALERTE DENSITÉ** (Risque de transcription littérale)")
+                            st.caption("Le fichier dépasse les seuils de tolérance (Rouge > 10% ou Vert < 70%).")
+                    
+                    with c2:
+                        st.download_button(
+                            label="⬇️ Rapport HTML",
+                            data=res["html"],
+                            file_name=f"{res['stem']}_Audit.html",
+                            mime="text/html",
+                            key=f"dl_{res['filename']}"
+                        )
 
-            if len(results) > 1:
-                st.markdown("---")
-                zip_buffer = io.BytesIO()
-                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-                    for res in results:
-                        zf.writestr(f"{res['stem']}_CPS.html", res["html"])
-                
-                st.download_button(
-                    label="📦 Télécharger TOUS les rapports (ZIP)",
-                    data=zip_buffer.getvalue(),
-                    file_name="Rapports_CPS.zip",
-                    mime="application/zip",
-                    type="primary"
-                )
+                    st.divider()
+
+                    # GRAPHIQUE COMPARATIF (Votre Fichier vs Standard)
+                    # Création d'un petit dataframe pour le chart
+                    data = pd.DataFrame({
+                        'Catégorie': ['Vert (Confort)', 'Vert (Confort)', 'Orange (Rapide)', 'Orange (Rapide)', 'Rouge (Excessif)', 'Rouge (Excessif)'],
+                        'Source': ['Votre Fichier', 'Cible Qualité', 'Votre Fichier', 'Cible Qualité', 'Votre Fichier', 'Cible Qualité'],
+                        'Pourcentage': [res['pct_green'], 80, res['pct_orange'], 15, res['pct_red'], 5],
+                        'Color': ['#4CAF50', '#81C784', '#FF9800', '#FFB74D', '#F44336', '#E57373']
+                    })
+                    
+                    # On utilise Altair (natif Streamlit) pour un chart horizontal empilé ou côte à côte
+                    # Ici simple bar chart groupé
+                    st.markdown("**Comparatif avec le standard qualité (Charte 2011)**")
+                    
+                    # Affichage simplifié via colonnes pour éviter lourdeur altair si pas nécessaire
+                    col_g, col_o, col_r = st.columns(3)
+                    with col_g:
+                        st.metric("Zone Verte", f"{res['pct_green']:.1f}%", delta=f"{res['pct_green']-80:.1f}% vs Cible", delta_color="normal")
+                    with col_o:
+                        st.metric("Zone Orange", f"{res['pct_orange']:.1f}%", delta=f"{res['pct_orange']-15:.1f}% vs Cible", delta_color="inverse")
+                    with col_r:
+                        st.metric("Zone Rouge", f"{res['pct_red']:.1f}%", delta=f"{res['pct_red']-5:.1f}% vs Cible", delta_color="inverse")
+                    
+                    # Prévisualisation HTML (Accordéon fermé par défaut pour clarté)
+                    with st.expander("👁️ Voir le détail des sous-titres"):
+                        components.html(res["html"], height=500, scrolling=True)
 
 if __name__ == "__main__":
     main()
