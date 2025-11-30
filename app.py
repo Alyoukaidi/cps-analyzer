@@ -288,9 +288,22 @@ def main():
     st.set_page_config(
         page_title="Audit de Conformité SME", 
         page_icon="📊", 
-        layout="wide",  # Wide mode par défaut
-        initial_sidebar_state="collapsed"
+        layout="wide",
+        initial_sidebar_state="collapsed",
+        menu_items={
+            'Get Help': 'https://lisibilite-sme.fr/methodologie.html',
+            'Report a bug': 'https://github.com/Alyoukaidi/cps-analyzer/issues',
+            'About': 'Outil open source d\'analyse CPS pour sous-titres SME'
+        }
     )
+    
+    # Forcer le thème light
+    st.markdown("""
+    <script>
+    const root = window.parent.document.querySelector('.stApp');
+    if (root) root.setAttribute('data-theme', 'light');
+    </script>
+    """, unsafe_allow_html=True)
     
     # --- GTM ---
     GTM_ID = "GTM-W972MJXS"
@@ -352,11 +365,11 @@ def main():
     
     # Laïus explicatif
     st.markdown("""
-    Cet outil analyse la **densité de lecture** (CPS - Caractères Par Seconde) des fichiers de sous-titres SME. 
-    Il produit un rapport visuel qui permet de vérifier si le sous-titrage respecte les seuils de lisibilité définis 
-    par la *Charte relative à la qualité du sous-titrage à destination des personnes sourdes ou malentendantes*.
+    Cet outil analyse la **densité de lecture** (CPS - Caractères Par Seconde) des fichiers de sous-titres SME.
     
-    **Téléversez ou déposez un ou plusieurs fichiers .srt ci-dessous, le résultat s'affichera instantanément.**
+    Il permet de visualiser si le sous-titrage respecte les seuils de lisibilité définis par la *Charte relative à la qualité du sous-titrage à destination des personnes sourdes ou malentendantes*.
+    
+    **Téléversez un ou plusieurs fichiers .srt ci-dessous, le résultat s'affichera instantanément.**
     """)
     
     st.markdown("---")
