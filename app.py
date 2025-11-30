@@ -296,16 +296,12 @@ def main():
     GTM_ID = "GTM-W972MJXS"
     inject_gtm(GTM_ID)
     
-    # --- CSS PERSONNALISÉ (harmonisé avec le site) ---
+    # --- CSS PERSONNALISÉ (minimal pour éviter les conflits) ---
     st.markdown("""
     <style>
-    /* Harmonisation avec lisibilite-sme.fr */
-    [data-testid="stAppViewContainer"] {
-        background-color: #f8fafc;
-    }
-    h1, h2, h3 {
+    /* Harmonisation légère avec lisibilite-sme.fr */
+    h1 {
         color: #1a365d !important;
-        font-weight: 700 !important;
     }
     .stButton>button {
         background-color: #2E7D32;
@@ -318,7 +314,6 @@ def main():
     }
     .stButton>button:hover {
         background-color: #1b5e20;
-        transform: translateY(-2px);
     }
     .stDownloadButton>button {
         background-color: #2E7D32;
@@ -328,6 +323,10 @@ def main():
     }
     .stDownloadButton>button:hover {
         background-color: #1b5e20;
+    }
+    /* Liens verts */
+    a {
+        color: #2E7D32;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -343,6 +342,16 @@ def main():
     
     st.title("AUDIT DE CONFORMITÉ SME")
     st.markdown("**Analyse du temps de lecture selon la Charte Arcom 2011**")
+    
+    # Laïus explicatif
+    st.markdown("""
+    Cet outil analyse la **densité de lecture** (CPS - Caractères Par Seconde) des fichiers de sous-titres SME. 
+    Il produit un rapport visuel qui permet de vérifier si le sous-titrage respecte les seuils de lisibilité définis 
+    par la *Charte relative à la qualité du sous-titrage à destination des personnes sourdes ou malentendantes*.
+    
+    **Téléversez ou déposez un ou plusieurs fichiers .srt ci-dessous, le résultat s'affichera instantanément.**
+    """)
+    
     st.markdown("---")
 
     # Gestion de l'état de l'uploader
@@ -352,9 +361,7 @@ def main():
     def reset_uploader():
         st.session_state.uploader_key += 1
 
-    # --- ZONE D'UPLOAD (sobre) ---
-    st.markdown("Déposez un ou plusieurs fichiers **.srt** pour analyse.")
-    
+    # --- ZONE D'UPLOAD ---
     uploaded_files = st.file_uploader(
         label="Upload SRT files", 
         type=["srt"], 
@@ -447,7 +454,7 @@ def main():
     st.markdown("""
     <div style='text-align: center; color: #64748b; font-size: 0.85rem;'>
         <p>Outil open source · <a href='https://lisibilite-sme.fr/methodologie.html' style='color: #2E7D32;'>Méthodologie</a> · 
-        <a href='https://github.com/alyoukaidi/lisibilite-sme' style='color: #2E7D32;'>Code source</a></p>
+        <a href='https://github.com/Alyoukaidi/cps-analyzer' style='color: #2E7D32;'>Code source</a></p>
     </div>
     """, unsafe_allow_html=True)
 
