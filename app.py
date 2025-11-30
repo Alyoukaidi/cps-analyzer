@@ -417,14 +417,10 @@ def main():
         
         for res in results:
             with st.container(border=True):
-                # VERDICT
+                # Titre et bouton de téléchargement
                 c1, c2 = st.columns([3, 1])
                 with c1:
                     st.subheader(f"`{res['filename']}`")
-                    if res['compliant']:
-                        st.success("✅ **Fichier conforme** (profil compatible Charte 2011)")
-                    else:
-                        st.error("⚠️ **Fichier non conforme** (dépassement des seuils)")
                 
                 with c2:
                     st.download_button(
@@ -434,18 +430,8 @@ def main():
                         mime="text/html",
                         key=f"dl_{res['filename']}"
                     )
-
-                st.divider()
-
-                # GRAPHIQUE SIMPLIFIÉ (sans gabarit)
-                col_g, col_o, col_r = st.columns(3)
-                with col_g:
-                    st.metric("Zone verte (confort)", f"{res['pct_green']:.1f}%")
-                with col_o:
-                    st.metric("Zone orange (rapide)", f"{res['pct_orange']:.1f}%")
-                with col_r:
-                    st.metric("Zone rouge (critique)", f"{res['pct_red']:.1f}%")
                 
+                # Rapport détaillé
                 with st.expander("👁️ Voir le rapport détaillé"):
                     components.html(res["html"], height=500, scrolling=True)
     
