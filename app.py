@@ -369,9 +369,9 @@ def main():
     
     # Laïus explicatif
     st.markdown("""
-    Cet outil analyse la **densité de lecture** (CPS - Caractères Par Seconde) des fichiers de sous-titres SME.
+    Cet outil open source mesure la **vitesse de défilement** des sous-titres SME en CPS (Caractères Par Seconde).
     
-    Il permet de visualiser si le sous-titrage respecte les seuils de lisibilité définis par la *Charte relative à la qualité du sous-titrage à destination des personnes sourdes ou malentendantes*.
+    Il permet de vérifier si le sous-titrage respecte les seuils définis par la *Charte relative à la qualité du sous-titrage à destination des personnes sourdes ou malentendantes*.
     
     **Téléversez un ou plusieurs fichiers .srt ci-dessous, le résultat s'affichera instantanément.**
     """)
