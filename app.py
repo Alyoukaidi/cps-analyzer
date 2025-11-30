@@ -365,13 +365,12 @@ def main():
     """, unsafe_allow_html=True)
     
     st.title("AUDIT DE CONFORMITÉ SME")
-    st.markdown("**Analyse du temps de lecture selon la Charte Arcom 2011**")
     
     # Laïus explicatif
     st.markdown("""
     Cet outil open source mesure la **vitesse de défilement** des sous-titres SME en CPS (Caractères Par Seconde).
     
-    Il permet de vérifier si le sous-titrage respecte les seuils définis par la *Charte relative à la qualité du sous-titrage à destination des personnes sourdes ou malentendantes*.
+    Il permet de vérifier si le sous-titrage respecte les seuils définis par la *Charte relative à la qualité du sous-titrage à destination des personnes sourdes ou malentendantes (Arcom 2011)*.
     
     **Téléversez un ou plusieurs fichiers .srt ci-dessous, le résultat s'affichera instantanément.**
     """)
