@@ -389,6 +389,9 @@ def main():
     **Téléversez un ou plusieurs fichiers .srt ci-dessous, le résultat s'affichera instantanément.**
     """)
     
+    # Confidentialité
+    st.info("🔒 **Confidentialité** : Les fichiers sont traités localement en mémoire. Aucun contenu n'est conservé ni transmis.", icon="🔒")
+    
     st.markdown("---")
 
     # Gestion de l'état de l'uploader
