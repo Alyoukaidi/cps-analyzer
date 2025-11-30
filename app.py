@@ -288,7 +288,7 @@ def main():
     st.set_page_config(
         page_title="Audit de Conformité SME", 
         page_icon="📊", 
-        layout="centered",
+        layout="wide",  # Wide mode par défaut
         initial_sidebar_state="collapsed"
     )
     
@@ -299,6 +299,13 @@ def main():
     # --- CSS PERSONNALISÉ (minimal pour éviter les conflits) ---
     st.markdown("""
     <style>
+    /* Police plus grande */
+    html, body, [class*="css"] {
+        font-size: 16px !important;
+    }
+    p, div, span, li {
+        font-size: 1.05rem !important;
+    }
     /* Harmonisation légère avec lisibilite-sme.fr */
     h1 {
         color: #1a365d !important;
@@ -414,6 +421,24 @@ def main():
             status.update(label="✅ Analyse terminée", state="complete", expanded=False)
 
         st.markdown("### 📄 Résultats")
+        
+        # Bouton ZIP si plusieurs fichiers
+        if len(results) > 1:
+            # Créer le fichier ZIP en mémoire
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                for res in results:
+                    zip_file.writestr(f"{res['stem']}_Analyse.html", res["html"])
+            zip_buffer.seek(0)
+            
+            st.download_button(
+                label=f"📦 Télécharger tous les rapports ({len(results)} fichiers)",
+                data=zip_buffer.getvalue(),
+                file_name="Rapports_CPS.zip",
+                mime="application/zip",
+                key="download_all_zip"
+            )
+            st.markdown("---")
         
         for res in results:
             with st.container(border=True):
