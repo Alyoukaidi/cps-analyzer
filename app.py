@@ -1,3 +1,20 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Outil d'analyse CPS (Caractères Par Seconde) pour sous-titres SME
+Audit de conformité selon la Charte Arcom 2011
+
+Copyright (c) 2025 Thierry Jullien
+Tous droits réservés.
+
+Ce code est distribué sous licence MIT.
+Voir le fichier LICENSE pour plus de détails.
+
+Auteur: Thierry Jullien
+Contact: thierry@lisibilite-sme.fr
+Repository: https://github.com/Alyoukaidi/cps-analyzer
+"""
+
 import streamlit as st
 import streamlit.components.v1 as components
 import re
