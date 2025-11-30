@@ -25,24 +25,7 @@ import pandas as pd
 import altair as alt
 
 # ==================================================================================
-# 0. GOOGLE TAG MANAGER (GTM)
-# ==================================================================================
-
-def inject_gtm(gtm_id):
-    if not gtm_id: return
-    gtm_code = f"""
-    <script>(function(w,d,s,l,i){{w[l]=w[l]||[];w[l].push({{'gtm.start':
-    new Date().getTime(),event:'gtm.js'}});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    }})(window,document,'script','dataLayer','{gtm_id}');</script>
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={gtm_id}"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    """
-    components.html(gtm_code, height=0, width=0)
-
-# ==================================================================================
-# 1. & 2. LOGIQUE MÉTIER CPS (Inchangée)
+# 1. & 2. LOGIQUE MÉTIER CPS
 # ==================================================================================
 
 cps_timecode_re = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)")
@@ -322,9 +305,13 @@ def main():
     </script>
     """, unsafe_allow_html=True)
     
-    # --- GTM ---
-    GTM_ID = "GTM-W972MJXS"
-    inject_gtm(GTM_ID)
+    # Forcer le thème light
+    st.markdown("""
+    <script>
+    const root = window.parent.document.querySelector('.stApp');
+    if (root) root.setAttribute('data-theme', 'light');
+    </script>
+    """, unsafe_allow_html=True)
     
     # --- CSS PERSONNALISÉ (minimal pour éviter les conflits) ---
     st.markdown("""
@@ -390,7 +377,7 @@ def main():
     """)
     
     # Confidentialité
-    st.info("🔒 **Confidentialité** : Les fichiers sont traités localement en mémoire. Aucun contenu n'est conservé ni transmis.", icon="🔒")
+    st.info("**Confidentialité** : Les fichiers sont traités localement en mémoire. Aucun contenu n'est conservé ni transmis.")
     
     st.markdown("---")
 
