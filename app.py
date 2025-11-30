@@ -118,7 +118,7 @@ def parse_srt_content(content_str: str):
     return cues
 
 # ==================================================================================
-# GÉNÉRATION HTML (Expertise Technique)
+# GÉNÉRATION HTML (Harmonisée avec le site)
 # ==================================================================================
 
 def generate_html_string(cues, source_filename: str) -> str:
@@ -170,15 +170,18 @@ def generate_html_string(cues, source_filename: str) -> str:
 
     html_parts = []
     
-    # CSS Sobre et Institutionnel
-    html_parts.append(f"""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Audit Conformité - {html.escape(source_filename)}</title>
+    # CSS harmonisé avec lisibilite-sme.fr
+    html_parts.append(f"""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+    <title>Analyse CPS : {html.escape(source_filename)}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-    body {{ font-family: 'Segoe UI', system-ui, sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 10px 40px; background: #f5f5f5; color: #333; }} 
-    h1 {{ font-size: 1.6rem; margin-bottom: 5px; color: #111; }} 
-    h2 {{ font-size: 1.3rem; margin-top: 30px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }}
-    .subtitle {{ color: #666; font-size: 0.95rem; margin-bottom: 25px; }}
+    body {{ font-family: 'Inter', system-ui, sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 10px 40px; background: #f8fafc; color: #334155; }} 
+    h1 {{ font-size: 1.6rem; margin-bottom: 5px; color: #1a365d; font-weight: 700; }} 
+    h2 {{ font-size: 1.3rem; margin-top: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; color: #1a365d; }}
+    .subtitle {{ color: #64748b; font-size: 0.95rem; margin-bottom: 25px; }}
     
-    .summary {{ background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 25px; }} 
+    .summary {{ background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 25px; }} 
     .summary-header {{ display: flex; align-items: center; justify-content: space-between; gap: 40px; margin-bottom: 15px; }} 
     
     .pie-wrapper {{ flex-shrink: 0; flex-grow: 1; position: relative; display: flex; justify-content: center; min-width: 250px; }} 
@@ -186,7 +189,7 @@ def generate_html_string(cues, source_filename: str) -> str:
     
     .barcode-wrapper {{ margin-top: 10px; }} 
     .barcode {{ width: 100%; height: 12px; border-radius: 4px; opacity: 0.9; }} 
-    .caption {{ font-size: 0.8rem; color: #777; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }} 
+    .caption {{ font-size: 0.8rem; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }} 
     
     .group-container {{ display: flex; margin-bottom: 15px; }} 
     .group-list {{ flex-grow: 1; margin-right: 15px; }} 
@@ -196,29 +199,29 @@ def generate_html_string(cues, source_filename: str) -> str:
     .bracket-label-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; }}
     .bracket-label {{ font-weight: 800; font-size: 1.3rem; line-height: 1.1; }} 
     
-    .warning-icon {{ font-size: 1.4rem; cursor: help; margin-top: 6px; color: #D32F2F; }}
+    .warning-icon {{ font-size: 1.4rem; cursor: help; margin-top: 6px; color: #ea580c; }}
     
     .group-green .bracket-visual {{ border-color: #2E7D32; }} .group-green .bracket-label {{ color: #2E7D32; }} 
     .group-orange .bracket-visual {{ border-color: #EF6C00; }} .group-orange .bracket-label {{ color: #EF6C00; }} 
     .group-red .bracket-visual {{ border-color: #C62828; }} .group-red .bracket-label {{ color: #C62828; }} 
     
-    details.cat-details {{ margin-bottom: 6px; border-radius: 4px; overflow: hidden; border: 1px solid rgba(0,0,0,0.05); }} 
+    details.cat-details {{ margin-bottom: 6px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }} 
     details.cat-details summary {{ cursor: pointer; padding: 8px 12px; font-weight: 600; display: flex; justify-content: space-between; list-style: none; outline: none; transition: background 0.2s; }} 
     details.cat-details[open] summary .arrow {{ transform: rotate(90deg); }} 
-    .arrow {{ display: inline-block; margin-right: 8px; transition: transform 0.15s; color: #555; }} 
+    .arrow {{ display: inline-block; margin-right: 8px; transition: transform 0.15s; color: #64748b; }} 
     
     .cat-content {{ padding: 0; background: #fff; }} 
     table {{ width: 100%; border-collapse: collapse; font-size: 0.9rem; }} 
-    th, td {{ border-bottom: 1px solid #f0f0f0; padding: 6px 10px; text-align: left; vertical-align: top; }} 
-    th {{ background: #fafafa; position: sticky; top: 0; font-size: 0.8rem; text-transform: uppercase; color: #777; font-weight: 600; }} 
-    tr:hover td {{ background: #f9f9f9; }}
+    th, td {{ border-bottom: 1px solid #f1f5f9; padding: 6px 10px; text-align: left; vertical-align: top; }} 
+    th {{ background: #f8fafc; position: sticky; top: 0; font-size: 0.8rem; text-transform: uppercase; color: #64748b; font-weight: 600; }} 
+    tr:hover td {{ background: #f8fafc; }}
     </style></head><body>""")
     
-    html_parts.append(f"<h1>Audit Conformité : {html.escape(source_filename)}</h1>")
-    html_parts.append(f"<div class='subtitle'>Contrôle de densité (Standard Charte Arcom 2011)</div>")
+    html_parts.append(f"<h1>Analyse CPS : {html.escape(source_filename)}</h1>")
+    html_parts.append(f"<div class='subtitle'>Médiane: {median_cps:.2f}</div>")
     
     sorted_by_cps = sorted(real_cues, key=lambda c: c["cps"])
-    if not sorted_by_cps: pie_bg = "#ddd"
+    if not sorted_by_cps: pie_bg = "#e2e8f0"
     else:
         parts = []
         pct_per_st = 100.0 / len(sorted_by_cps)
@@ -228,7 +231,7 @@ def generate_html_string(cues, source_filename: str) -> str:
             parts.append(f"{color} {(i+1) * pct_per_st:.3f}%")
         pie_bg = "linear-gradient(to right, " + ", ".join(parts) + ")"
     
-    barcode_bg = "#ddd"
+    barcode_bg = "#e2e8f0"
     if real_cues:
         b_parts = []
         total_real = len(real_cues)
@@ -243,22 +246,21 @@ def generate_html_string(cues, source_filename: str) -> str:
     median_clamped = min(median_cps, 30)
     arrow_pos = (median_clamped / 30) * 100
     
-    html_parts.append(f"""<div class='summary'><div class='summary-header'><div class='summary-text'><p style='margin:2px 0; font-size:1.1rem;'><strong>Moyenne :</strong> {avg_cps:.2f} CPS</p><p style='margin:2px 0; color:#666;'><strong>Total :</strong> {total_raw} ST <span style='font-size:0.85em;'>(dont {excluded_count} exclus)</span></p></div><div class='pie-wrapper'><div class='pie' style='background:{pie_bg};'></div><div style='position:absolute; top:-10px; left:{arrow_pos:.1f}%; transform:translateX(-50%); border-left:8px solid transparent; border-right:8px solid transparent; border-top:12px solid #333;'></div><div style='position:absolute; top:-28px; left:{arrow_pos:.1f}%; transform:translateX(-50%); font-size:0.75em; font-weight:700; color:#333;'>Médiane {median_cps:.1f}</div></div></div><div class='barcode-wrapper'><div class='barcode' style='background:{barcode_bg};'></div><p class='caption'>Densité chronologique (Début &rarr; Fin)</p></div></div>""")
+    html_parts.append(f"""<div class='summary'><div class='summary-header'><div class='summary-text'><p style='margin:2px 0; font-size:1.1rem;'><strong>Total :</strong> {total_raw} ST <span style='font-size:0.85em; color:#64748b;'>(dont {excluded_count} exclus : ... / ♪ / ↑)</span></p><p style='margin:2px 0; color:#64748b;'><strong>Moyenne :</strong> {avg_cps:.2f} CPS</p></div><div class='pie-wrapper'><div class='pie' style='background:{pie_bg};'></div><div style='position:absolute; top:-10px; left:{arrow_pos:.1f}%; transform:translateX(-50%); border-left:8px solid transparent; border-right:8px solid transparent; border-top:12px solid #1a365d;'></div><div style='position:absolute; top:-28px; left:{arrow_pos:.1f}%; transform:translateX(-50%); font-size:0.75em; font-weight:700; color:#1a365d;'>Médiane: {median_cps:.2f}</div></div></div><div class='barcode-wrapper'><div class='barcode' style='background:{barcode_bg};'></div><p class='caption'>Progression chronologique dans le fichier</p></div></div>""")
     
-    html_parts.append("<div class='cat-section'><h2>Répartition par catégories</h2>")
+    html_parts.append("<div class='cat-section'><h2>Répartition</h2>")
     
     for grp in groups:
         has_content = any(counts[c] > 0 for c in grp["cats"])
         if not has_content: continue
         
         warning_html = ""
-        # LOGIQUE D'ALERTE TECHNIQUE
         title_attr = ""
         if grp["name"] == "red" and grp["pct"] > 10:
-            title_attr = "Seuil critique dépassé (>10% de sous-titres très rapides)."
+            title_attr = "Seuil critique dépassé (>10% en zone rouge)."
             warning_html = f"<div class='warning-icon' title='{title_attr}'>⚠️</div>"
         elif grp["name"] == "green" and grp["pct"] < 70:
-            title_attr = "Taux de confort insuffisant (<70% de sous-titres standard)."
+            title_attr = "Taux de confort insuffisant (<70% en zone verte)."
             warning_html = f"<div class='warning-icon' title='{title_attr}'>⚠️</div>"
 
         html_parts.append(f"<div class='group-container group-{grp['name']}'><div class='group-list'>")
@@ -279,167 +281,175 @@ def generate_html_string(cues, source_filename: str) -> str:
     return "".join(html_parts)
 
 # ==================================================================================
-# APP STREAMLIT (Version Expert V9 - "Le Juge de Paix")
+# APP STREAMLIT (Version refonte complète)
 # ==================================================================================
 
 def main():
-    st.set_page_config(page_title="Audit Conformité SME", page_icon="⚖️", layout="centered")
+    st.set_page_config(
+        page_title="Audit de Conformité SME", 
+        page_icon="📊", 
+        layout="centered",
+        initial_sidebar_state="collapsed"
+    )
     
     # --- GTM ---
     GTM_ID = "GTM-W972MJXS"
     inject_gtm(GTM_ID)
     
-    # --- SIDEBAR (Expertise Sobre) ---
-    with st.sidebar:
-        st.markdown("### ⚖️ Outil de contrôle")
-        st.info("""
-        Audit technique de la densité des sous-titres selon les recommandations de la **Charte Qualité 2011**.
-        """)
-        
-        st.markdown("---")
-        st.markdown("#### 👤 Crédits")
-        st.caption("""
-        **Thierry Jullien**
-        * Expert accessibilité
-        * Co-auteur Charte Qualité 2011
-        """)
-
-    # --- HEADER ---
-    st.title("⚖️ Audit de Conformité SME")
-    st.markdown("**Contrôle de densité / Standard Charte Arcom 2011**")
+    # --- CSS PERSONNALISÉ (harmonisé avec le site) ---
+    st.markdown("""
+    <style>
+    /* Harmonisation avec lisibilite-sme.fr */
+    [data-testid="stAppViewContainer"] {
+        background-color: #f8fafc;
+    }
+    h1, h2, h3 {
+        color: #1a365d !important;
+        font-weight: 700 !important;
+    }
+    .stButton>button {
+        background-color: #2E7D32;
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+        border: none;
+        padding: 0.5rem 1.5rem;
+        transition: all 0.2s;
+    }
+    .stButton>button:hover {
+        background-color: #1b5e20;
+        transform: translateY(-2px);
+    }
+    .stDownloadButton>button {
+        background-color: #2E7D32;
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+    .stDownloadButton>button:hover {
+        background-color: #1b5e20;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # --- HEADER avec lien retour ---
+    st.markdown("""
+    <div style='margin-bottom: 20px;'>
+        <a href='https://lisibilite-sme.fr' style='color: #64748b; text-decoration: none; font-size: 0.9rem;'>
+            ← Retour au site
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.title("AUDIT DE CONFORMITÉ SME")
+    st.markdown("**Analyse du temps de lecture selon la Charte Arcom 2011**")
     st.markdown("---")
 
+    # Gestion de l'état de l'uploader
     if 'uploader_key' not in st.session_state:
         st.session_state.uploader_key = 0
 
     def reset_uploader():
         st.session_state.uploader_key += 1
 
-    tab_audit, tab_context = st.tabs(["📊 Lancer l'Audit", "ℹ️ Référentiel"])
+    # --- ZONE D'UPLOAD (sobre) ---
+    st.markdown("Déposez un ou plusieurs fichiers **.srt** pour analyse.")
+    
+    uploaded_files = st.file_uploader(
+        label="Upload SRT files", 
+        type=["srt"], 
+        accept_multiple_files=True,
+        label_visibility="collapsed",
+        key=f"uploader_{st.session_state.uploader_key}"
+    )
 
-    # --- ONGLET RÉFÉRENTIEL (Factuel) ---
-    with tab_context:
-        st.header("Critères de densité (CPS)")
-        st.markdown("""
-        L'analyse de densité permet de vérifier si le fichier respecte les temps de lecture nécessaires à l'accessibilité.
-        """)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.success("**✅ Standard Charte 2011**")
-            st.caption("Lecture confortable (Accessibilité réelle)")
-            st.markdown("- **Vert (>70%)** : Majoritaire")
-            st.markdown("- **Rouge (<10%)** : Marginal")
+    if uploaded_files:
+        col1, col2 = st.columns([0.85, 0.15])
         with col2:
-            st.error("**❌ Densité Excessive**")
-            st.caption("Surcharge cognitive (Non conforme)")
-            st.markdown("- **Vert (<60%)** : Insuffisant")
-            st.markdown("- **Rouge (>15%)** : Critique")
+            st.button("🗑️ Reset", on_click=reset_uploader, help="Effacer tous les fichiers")
 
-    # --- ONGLET AUDIT ---
-    with tab_audit:
-        st.info("👇 Déposez vos fichiers **.srt** pour contrôle.", icon="📂")
-
-        uploaded_files = st.file_uploader(
-            label="Upload SRT files", 
-            type=["srt"], 
-            accept_multiple_files=True,
-            label_visibility="collapsed",
-            key=f"uploader_{st.session_state.uploader_key}"
-        )
-
-        if uploaded_files:
-            col1, col2 = st.columns([0.85, 0.15])
-            with col2:
-                st.button("🗑️ Reset", on_click=reset_uploader, help="Tout effacer")
-
-            with st.status("Audit technique en cours...", expanded=True) as status:
-                results = []
-                for i, uploaded_file in enumerate(uploaded_files):
-                    status.write(f"Traitement de `{uploaded_file.name}`...")
-                    
-                    bytes_data = uploaded_file.getvalue()
-                    try:
-                        content = bytes_data.decode("utf-8")
-                    except UnicodeDecodeError:
-                        content = bytes_data.decode("latin-1")
-                    
-                    cues = parse_srt_content(content)
-                    html_report = generate_html_string(cues, uploaded_file.name)
-                    
-                    real_cues = [c for c in cues if not is_indicator(c["text_display"])]
-                    total = len(real_cues)
-                    stats = {i: 0 for i in range(1, 8)}
-                    for c in real_cues: stats[c["category"]] += 1
-                    
-                    pct_green = (sum(stats[i] for i in range(1, 4)) / total * 100) if total else 0
-                    pct_orange = (stats[4] / total * 100) if total else 0
-                    pct_red = (sum(stats[i] for i in range(5, 8)) / total * 100) if total else 0
-                    
-                    # Verdict Factuel
-                    is_compliant = (pct_green >= 70) and (pct_red <= 10)
-                    
-                    results.append({
-                        "filename": uploaded_file.name,
-                        "html": html_report,
-                        "stem": uploaded_file.name.rsplit('.', 1)[0],
-                        "pct_green": pct_green,
-                        "pct_orange": pct_orange,
-                        "pct_red": pct_red,
-                        "compliant": is_compliant
-                    })
+        with st.status("Analyse en cours...", expanded=True) as status:
+            results = []
+            for i, uploaded_file in enumerate(uploaded_files):
+                status.write(f"Traitement de `{uploaded_file.name}`...")
                 
-                status.update(label="✅ Audit terminé", state="complete", expanded=False)
-
-            st.markdown("### 📄 Rapports d'audit")
+                bytes_data = uploaded_file.getvalue()
+                try:
+                    content = bytes_data.decode("utf-8")
+                except UnicodeDecodeError:
+                    content = bytes_data.decode("latin-1")
+                
+                cues = parse_srt_content(content)
+                html_report = generate_html_string(cues, uploaded_file.name)
+                
+                real_cues = [c for c in cues if not is_indicator(c["text_display"])]
+                total = len(real_cues)
+                stats = {i: 0 for i in range(1, 8)}
+                for c in real_cues: stats[c["category"]] += 1
+                
+                pct_green = (sum(stats[i] for i in range(1, 4)) / total * 100) if total else 0
+                pct_orange = (stats[4] / total * 100) if total else 0
+                pct_red = (sum(stats[i] for i in range(5, 8)) / total * 100) if total else 0
+                
+                # Verdict
+                is_compliant = (pct_green >= 70) and (pct_red <= 10)
+                
+                results.append({
+                    "filename": uploaded_file.name,
+                    "html": html_report,
+                    "stem": uploaded_file.name.rsplit('.', 1)[0],
+                    "pct_green": pct_green,
+                    "pct_orange": pct_orange,
+                    "pct_red": pct_red,
+                    "compliant": is_compliant
+                })
             
-            for res in results:
-                with st.container(border=True):
-                    # VERDICT FACTUEL
-                    c1, c2 = st.columns([3, 1])
-                    with c1:
-                        st.subheader(f"`{res['filename']}`")
-                        if res['compliant']:
-                            st.success("✅ **PROFIL DE DENSITÉ CONFORME**")
-                            st.caption("Distribution respectant les seuils de la Charte 2011.")
-                        else:
-                            st.error("⚠️ **PROFIL DE DENSITÉ CRITIQUE (Non conforme)**")
-                            st.caption("Dépassement des seuils de densité recommandés.")
-                    
-                    with c2:
-                        st.download_button(
-                            label="⬇️ Rapport HTML",
-                            data=res["html"],
-                            file_name=f"{res['stem']}_Audit.html",
-                            mime="text/html",
-                            key=f"dl_{res['filename']}"
-                        )
+            status.update(label="✅ Analyse terminée", state="complete", expanded=False)
 
-                    st.divider()
+        st.markdown("### 📄 Résultats")
+        
+        for res in results:
+            with st.container(border=True):
+                # VERDICT
+                c1, c2 = st.columns([3, 1])
+                with c1:
+                    st.subheader(f"`{res['filename']}`")
+                    if res['compliant']:
+                        st.success("✅ **Fichier conforme** (profil compatible Charte 2011)")
+                    else:
+                        st.error("⚠️ **Fichier non conforme** (dépassement des seuils)")
+                
+                with c2:
+                    st.download_button(
+                        label="⬇️ Télécharger",
+                        data=res["html"],
+                        file_name=f"{res['stem']}_Analyse.html",
+                        mime="text/html",
+                        key=f"dl_{res['filename']}"
+                    )
 
-                    # GRAPHIQUE COMPARATIF (Fichier vs Gabarit)
-                    source_data = pd.DataFrame([
-                        {'Zone': '1. Confort (Vert)', 'Pourcentage': res['pct_green'], 'Type': 'Fichier Analysé', 'Color': '#2E7D32'},
-                        {'Zone': '2. Rapide (Orange)', 'Pourcentage': res['pct_orange'], 'Type': 'Fichier Analysé', 'Color': '#EF6C00'},
-                        {'Zone': '3. Critique (Rouge)', 'Pourcentage': res['pct_red'], 'Type': 'Fichier Analysé', 'Color': '#C62828'},
-                        
-                        {'Zone': '1. Confort (Vert)', 'Pourcentage': 80, 'Type': 'Gabarit Charte 2011', 'Color': '#81C784'},
-                        {'Zone': '2. Rapide (Orange)', 'Pourcentage': 15, 'Type': 'Gabarit Charte 2011', 'Color': '#FFB74D'},
-                        {'Zone': '3. Critique (Rouge)', 'Pourcentage': 5, 'Type': 'Gabarit Charte 2011', 'Color': '#E57373'},
-                    ])
-                    
-                    chart = alt.Chart(source_data).mark_bar().encode(
-                        x=alt.X('Pourcentage:Q', scale=alt.Scale(domain=[0, 100]), title=None),
-                        y=alt.Y('Type:N', title=None, axis=alt.Axis(labels=True)),
-                        color=alt.Color('Color:N', scale=None, legend=None),
-                        order=alt.Order('Zone', sort='ascending'),
-                        column=alt.Column('Zone:N', header=alt.Header(title=None, labelFontSize=12, labelFontWeight='bold'))
-                    ).properties(height=60, width=180).configure_axis(grid=False).configure_view(strokeWidth=0)
-                    
-                    st.altair_chart(chart, use_container_width=False)
-                    
-                    with st.expander("👁️ Détail des mesures"):
-                        components.html(res["html"], height=500, scrolling=True)
+                st.divider()
+
+                # GRAPHIQUE SIMPLIFIÉ (sans gabarit)
+                col_g, col_o, col_r = st.columns(3)
+                with col_g:
+                    st.metric("Zone verte (confort)", f"{res['pct_green']:.1f}%")
+                with col_o:
+                    st.metric("Zone orange (rapide)", f"{res['pct_orange']:.1f}%")
+                with col_r:
+                    st.metric("Zone rouge (critique)", f"{res['pct_red']:.1f}%")
+                
+                with st.expander("👁️ Voir le rapport détaillé"):
+                    components.html(res["html"], height=500, scrolling=True)
+    
+    # --- FOOTER ---
+    st.markdown("---")
+    st.markdown("""
+    <div style='text-align: center; color: #64748b; font-size: 0.85rem;'>
+        <p>Outil open source · <a href='https://lisibilite-sme.fr/methodologie.html' style='color: #2E7D32;'>Méthodologie</a> · 
+        <a href='https://github.com/alyoukaidi/lisibilite-sme' style='color: #2E7D32;'>Code source</a></p>
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
