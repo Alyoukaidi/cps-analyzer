@@ -21,11 +21,115 @@ import re
 import html
 import io
 import zipfile
-import pandas as pd
-import altair as alt
+import unicodedata
 
 # ==================================================================================
-# 1. & 2. LOGIQUE MÉTIER CPS
+# CONVERSION VTT → SRT (EN MÉMOIRE)
+# ==================================================================================
+
+MOJIBAKE_MAP = {
+    "aÌ": "á", "eÌ": "é", "iÌ": "í", "oÌ": "ó", "uÌ": "ú",
+    "AÌ": "Á", "EÌ": "É", "IÌ": "Í", "OÌ": "Ó", "UÌ": "Ú",
+    "aÌ€": "à", "eÌ€": "è", "uÌ€": "ù", "AÌ€": "À", "EÌ€": "È", "UÌ€": "Ù",
+    "aÌ‚": "â", "eÌ‚": "ê", "iÌ‚": "î", "oÌ‚": "ô", "uÌ‚": "û",
+    "AÌ‚": "Â", "EÌ‚": "Ê", "IÌ‚": "Î", "OÌ‚": "Ô", "UÌ‚": "Û",
+    "cÌ§": "ç", "CÌ§": "Ç",
+    "aÌ": "ä", "AÌ": "Ä", "eÌ": "ë", "EÌ": "Ë",
+    "iÌ": "ï", "IÌ": "Ï", "oÌ": "ö", "OÌ": "Ö",
+    "uÌ": "ü", "UÌ": "Ü",
+    "iÌ¨": "ï", "IÌ¨": "Ï", "iÌ": "ï", "IÌ": "Ï",
+}
+
+def smart_fix_mojibake(text: str) -> str:
+    """Corrige le Mojibake typique d'Arte (encodage CP1252 mal interprété)."""
+    if "\u00cc" in text:
+        try:
+            raw_bytes = text.encode("cp1252")
+            decoded = raw_bytes.decode("utf-8")
+            return unicodedata.normalize("NFC", decoded)
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
+    # Fallback sur la map manuelle
+    for bad, good in MOJIBAKE_MAP.items():
+        text = text.replace(bad, good)
+    return unicodedata.normalize("NFC", text)
+
+def clean_text_line_vtt(line: str) -> str:
+    """Nettoie une ligne VTT : supprime les balises HTML et corrige le Mojibake."""
+    no_tags = re.sub(r"<[^>]+>", "", line)
+    cleaned = smart_fix_mojibake(no_tags)
+    return cleaned.strip()
+
+def convert_vtt_to_srt_string(vtt_content: str) -> str:
+    """Convertit un contenu VTT (string) en SRT (string) en mémoire."""
+    lines = vtt_content.splitlines()
+    cues = []
+    in_style_block = False
+    current_start = None
+    current_end = None
+    current_text_lines = []
+
+    def flush_cue():
+        nonlocal current_start, current_end, current_text_lines
+        if current_start and current_end and current_text_lines:
+            cues.append({
+                "start": current_start.replace(".", ",", 1),  # VTT → SRT
+                "end": current_end.replace(".", ",", 1),
+                "text": current_text_lines[:],
+            })
+        current_start = None
+        current_end = None
+        current_text_lines = []
+
+    for line in lines:
+        stripped = line.strip()
+        
+        # Ignorer l'en-tête WEBVTT
+        if stripped.startswith("WEBVTT") and current_start is None:
+            continue
+        
+        # Ignorer les blocs STYLE et NOTE
+        if stripped.startswith(("STYLE", "NOTE")):
+            in_style_block = True
+            continue
+        if in_style_block:
+            if stripped == "":
+                in_style_block = False
+            continue
+
+        # Ligne vide = fin de cue
+        if stripped == "":
+            flush_cue()
+            continue
+
+        # Timecode VTT (avec point comme séparateur millisecondes)
+        m = re.search(r"(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})", line)
+        if m:
+            flush_cue()
+            current_start = m.group(1)
+            current_end = m.group(2)
+            continue
+
+        # Texte du sous-titre
+        if current_start and current_end:
+            text = clean_text_line_vtt(line)
+            if text:
+                current_text_lines.append(text)
+
+    flush_cue()  # Dernier cue
+
+    # Génération du format SRT
+    srt_lines = []
+    for idx, cue in enumerate(cues, start=1):
+        srt_lines.append(f"{idx}")
+        srt_lines.append(f"{cue['start']} --> {cue['end']}")
+        srt_lines.extend(cue["text"])
+        srt_lines.append("")  # Ligne vide
+    
+    return "\n".join(srt_lines)
+
+# ==================================================================================
+# LOGIQUE MÉTIER CPS
 # ==================================================================================
 
 cps_timecode_re = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)")
@@ -179,7 +283,6 @@ def generate_html_string(cues, source_filename: str) -> str:
     body {{ font-family: 'Inter', system-ui, sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 10px 40px; background: #f8fafc; color: #334155; }} 
     h1 {{ font-size: 1.6rem; margin-bottom: 5px; color: #1a365d; font-weight: 700; }} 
     h2 {{ font-size: 1.3rem; margin-top: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; color: #1a365d; }}
-    .subtitle {{ color: #64748b; font-size: 0.95rem; margin-bottom: 25px; }}
     
     .summary {{ background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 25px; }} 
     .summary-header {{ display: flex; align-items: center; justify-content: space-between; gap: 40px; margin-bottom: 15px; }} 
@@ -201,9 +304,9 @@ def generate_html_string(cues, source_filename: str) -> str:
     
     .warning-icon {{ font-size: 1.4rem; cursor: help; margin-top: 6px; color: #ea580c; }}
     
-    .group-green .bracket-visual {{ border-color: #2E7D32; }} .group-green .bracket-label {{ color: #2E7D32; }} 
-    .group-orange .bracket-visual {{ border-color: #EF6C00; }} .group-orange .bracket-label {{ color: #EF6C00; }} 
-    .group-red .bracket-visual {{ border-color: #C62828; }} .group-red .bracket-label {{ color: #C62828; }} 
+    .group-green .bracket-visual {{ border-color: #00d000; }} .group-green .bracket-label {{ color: #00a000; }} 
+    .group-orange .bracket-visual {{ border-color: #ff8c00; }} .group-orange .bracket-label {{ color: #d07000; }} 
+    .group-red .bracket-visual {{ border-color: #ff0000; }} .group-red .bracket-label {{ color: #c00000; }} 
     
     details.cat-details {{ margin-bottom: 6px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }} 
     details.cat-details summary {{ cursor: pointer; padding: 8px 12px; font-weight: 600; display: flex; justify-content: space-between; list-style: none; outline: none; transition: background 0.2s; }} 
@@ -218,7 +321,6 @@ def generate_html_string(cues, source_filename: str) -> str:
     </style></head><body>""")
     
     html_parts.append(f"<h1>Analyse CPS : {html.escape(source_filename)}</h1>")
-    html_parts.append(f"<div class='subtitle'>Médiane: {median_cps:.2f}</div>")
     
     sorted_by_cps = sorted(real_cues, key=lambda c: c["cps"])
     if not sorted_by_cps: pie_bg = "#e2e8f0"
@@ -246,7 +348,7 @@ def generate_html_string(cues, source_filename: str) -> str:
     median_clamped = min(median_cps, 30)
     arrow_pos = (median_clamped / 30) * 100
     
-    html_parts.append(f"""<div class='summary'><div class='summary-header'><div class='summary-text'><p style='margin:2px 0; font-size:1.1rem;'><strong>Total :</strong> {total_raw} ST <span style='font-size:0.85em; color:#64748b;'>(dont {excluded_count} exclus : ... / ♪ / ↑)</span></p><p style='margin:2px 0; color:#64748b;'><strong>Moyenne :</strong> {avg_cps:.2f} CPS</p></div><div class='pie-wrapper'><div class='pie' style='background:{pie_bg};'></div><div style='position:absolute; top:-10px; left:{arrow_pos:.1f}%; transform:translateX(-50%); border-left:8px solid transparent; border-right:8px solid transparent; border-top:12px solid #1a365d;'></div><div style='position:absolute; top:-28px; left:{arrow_pos:.1f}%; transform:translateX(-50%); font-size:0.75em; font-weight:700; color:#1a365d;'>Médiane: {median_cps:.2f}</div></div></div><div class='barcode-wrapper'><div class='barcode' style='background:{barcode_bg};'></div><p class='caption'>Progression chronologique dans le fichier</p></div></div>""")
+    html_parts.append(f"""<div class='summary'><div class='summary-header'><div class='summary-text'><p style='margin:2px 0; font-size:1.1rem;'><strong>Total :</strong> {total_raw} ST <span style='font-size:0.85em; color:#777;'>(dont {excluded_count} exclus : ... / ♪)</span></p><p style='margin:2px 0; color:#64748b;'><strong>Moyenne :</strong> {avg_cps:.2f} CPS</p></div><div class='pie-wrapper'><div class='pie' style='background:{pie_bg};'></div><div style='position:absolute; top:-10px; left:{arrow_pos:.1f}%; transform:translateX(-50%); border-left:8px solid transparent; border-right:8px solid transparent; border-top:12px solid #333;'></div><div style='position:absolute; top:-28px; left:{arrow_pos:.1f}%; transform:translateX(-50%); font-size:0.75em; font-weight:700;'>Médiane: {median_cps:.2f}</div></div></div><div class='barcode-wrapper'><div class='barcode' style='background:{barcode_bg};'></div><p class='caption'>Progression chronologique dans le fichier</p></div></div>""")
     
     html_parts.append("<div class='cat-section'><h2>Répartition</h2>")
     
@@ -281,7 +383,7 @@ def generate_html_string(cues, source_filename: str) -> str:
     return "".join(html_parts)
 
 # ==================================================================================
-# APP STREAMLIT (Version refonte complète)
+# APP STREAMLIT
 # ==================================================================================
 
 def main():
@@ -305,15 +407,7 @@ def main():
     </script>
     """, unsafe_allow_html=True)
     
-    # Forcer le thème light
-    st.markdown("""
-    <script>
-    const root = window.parent.document.querySelector('.stApp');
-    if (root) root.setAttribute('data-theme', 'light');
-    </script>
-    """, unsafe_allow_html=True)
-    
-    # --- CSS PERSONNALISÉ (minimal pour éviter les conflits) ---
+    # --- CSS PERSONNALISÉ ---
     st.markdown("""
     <style>
     /* Police plus grande */
@@ -323,7 +417,7 @@ def main():
     p, div, span, li {
         font-size: 1.05rem !important;
     }
-    /* Harmonisation légère avec lisibilite-sme.fr */
+    /* Harmonisation avec lisibilite-sme.fr */
     h1 {
         color: #1a365d !important;
     }
@@ -348,7 +442,6 @@ def main():
     .stDownloadButton>button:hover {
         background-color: #1b5e20;
     }
-    /* Liens verts */
     a {
         color: #2E7D32;
     }
@@ -372,7 +465,7 @@ def main():
     
     Il permet de vérifier si le sous-titrage respecte les seuils définis par la *Charte relative à la qualité du sous-titrage à destination des personnes sourdes ou malentendantes* (Arcom 2011).
     
-    **Téléversez un ou plusieurs fichiers .srt ci-dessous, le résultat s'affichera instantanément.**
+    **Téléversez un ou plusieurs fichiers .srt ou .vtt ci-dessous, le résultat s'affichera instantanément.**
     """)
     
     # Confidentialité
@@ -387,10 +480,10 @@ def main():
     def reset_uploader():
         st.session_state.uploader_key += 1
 
-    # --- ZONE D'UPLOAD ---
+    # --- ZONE D'UPLOAD (accepte SRT et VTT) ---
     uploaded_files = st.file_uploader(
-        label="Upload SRT files", 
-        type=["srt"], 
+        label="Upload SRT ou VTT files", 
+        type=["srt", "vtt"],  # ← Support VTT ajouté
         accept_multiple_files=True,
         label_visibility="collapsed",
         key=f"uploader_{st.session_state.uploader_key}"
@@ -406,36 +499,51 @@ def main():
             for i, uploaded_file in enumerate(uploaded_files):
                 status.write(f"Traitement de `{uploaded_file.name}`...")
                 
+                # Lecture du fichier
                 bytes_data = uploaded_file.getvalue()
                 try:
                     content = bytes_data.decode("utf-8")
                 except UnicodeDecodeError:
                     content = bytes_data.decode("latin-1")
                 
-                cues = parse_srt_content(content)
-                html_report = generate_html_string(cues, uploaded_file.name)
+                # CONVERSION VTT → SRT si nécessaire
+                if uploaded_file.name.lower().endswith(".vtt"):
+                    try:
+                        content = convert_vtt_to_srt_string(content)
+                        status.write(f"✅ VTT converti en SRT : `{uploaded_file.name}`")
+                    except Exception as e:
+                        st.error(f"❌ Erreur de conversion VTT pour `{uploaded_file.name}` : {e}")
+                        continue
                 
-                real_cues = [c for c in cues if not is_indicator(c["text_display"])]
-                total = len(real_cues)
-                stats = {i: 0 for i in range(1, 8)}
-                for c in real_cues: stats[c["category"]] += 1
-                
-                pct_green = (sum(stats[i] for i in range(1, 4)) / total * 100) if total else 0
-                pct_orange = (stats[4] / total * 100) if total else 0
-                pct_red = (sum(stats[i] for i in range(5, 8)) / total * 100) if total else 0
-                
-                # Verdict
-                is_compliant = (pct_green >= 70) and (pct_red <= 10)
-                
-                results.append({
-                    "filename": uploaded_file.name,
-                    "html": html_report,
-                    "stem": uploaded_file.name.rsplit('.', 1)[0],
-                    "pct_green": pct_green,
-                    "pct_orange": pct_orange,
-                    "pct_red": pct_red,
-                    "compliant": is_compliant
-                })
+                # Analyse CPS
+                try:
+                    cues = parse_srt_content(content)
+                    html_report = generate_html_string(cues, uploaded_file.name)
+                    
+                    real_cues = [c for c in cues if not is_indicator(c["text_display"])]
+                    total = len(real_cues)
+                    stats = {i: 0 for i in range(1, 8)}
+                    for c in real_cues: stats[c["category"]] += 1
+                    
+                    pct_green = (sum(stats[i] for i in range(1, 4)) / total * 100) if total else 0
+                    pct_orange = (stats[4] / total * 100) if total else 0
+                    pct_red = (sum(stats[i] for i in range(5, 8)) / total * 100) if total else 0
+                    
+                    # Verdict
+                    is_compliant = (pct_green >= 70) and (pct_red <= 10)
+                    
+                    results.append({
+                        "filename": uploaded_file.name,
+                        "html": html_report,
+                        "stem": uploaded_file.name.rsplit('.', 1)[0],
+                        "pct_green": pct_green,
+                        "pct_orange": pct_orange,
+                        "pct_red": pct_red,
+                        "compliant": is_compliant
+                    })
+                except Exception as e:
+                    st.error(f"❌ Erreur d'analyse pour `{uploaded_file.name}` : {e}")
+                    continue
             
             status.update(label="✅ Analyse terminée", state="complete", expanded=False)
 
@@ -443,7 +551,6 @@ def main():
         
         # Bouton ZIP si plusieurs fichiers
         if len(results) > 1:
-            # Créer le fichier ZIP en mémoire
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                 for res in results:
