@@ -146,8 +146,13 @@ def prepare_text_for_cps(text_lines):
         line = re.sub(r"<[^>\n]+>", "", line)
         cleaned_lines.append(line)
     text = "".join(line.strip() for line in cleaned_lines)
-    text = html.unescape(text)
-    text = "".join(ch for ch in text if ch.isprintable() or ch == " ")
+    
+    # N'appliquer html.unescape que si nécessaire (détection d'entités HTML)
+    if "&" in text and ";" in text:
+        text = html.unescape(text)
+    
+    # Filtrer les caractères non-imprimables mais PRÉSERVER les accents Unicode
+    text = "".join(ch for ch in text if ch.isprintable() or ch.isspace())
     text = re.sub(r" +", " ", text)
     return text.strip()
 
@@ -292,7 +297,7 @@ def generate_html_string(cues, source_filename: str) -> str:
     
     .barcode-wrapper {{ margin-top: 10px; }} 
     .barcode {{ width: 100%; height: 12px; border-radius: 4px; opacity: 0.9; }} 
-    .caption {{ font-size: 0.8rem; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }} 
+    .caption {{ font-size: 0.8rem; color: #64748b; margin-top: 4px; }} 
     
     .group-container {{ display: flex; margin-bottom: 15px; }} 
     .group-list {{ flex-grow: 1; margin-right: 15px; }} 
@@ -348,7 +353,7 @@ def generate_html_string(cues, source_filename: str) -> str:
     median_clamped = min(median_cps, 30)
     arrow_pos = (median_clamped / 30) * 100
     
-    html_parts.append(f"""<div class='summary'><div class='summary-header'><div class='summary-text'><p style='margin:2px 0; font-size:1.1rem;'><strong>Total :</strong> {total_raw} ST <span style='font-size:0.85em; color:#777;'>(dont {excluded_count} exclus : ... / ♪)</span></p><p style='margin:2px 0; color:#64748b;'><strong>Moyenne :</strong> {avg_cps:.2f} CPS</p></div><div class='pie-wrapper'><div class='pie' style='background:{pie_bg};'></div><div style='position:absolute; top:-10px; left:{arrow_pos:.1f}%; transform:translateX(-50%); border-left:8px solid transparent; border-right:8px solid transparent; border-top:12px solid #333;'></div><div style='position:absolute; top:-28px; left:{arrow_pos:.1f}%; transform:translateX(-50%); font-size:0.75em; font-weight:700;'>Médiane: {median_cps:.2f}</div></div></div><div class='barcode-wrapper'><div class='barcode' style='background:{barcode_bg};'></div><p class='caption'>Progression chronologique dans le fichier</p></div></div>""")
+    html_parts.append(f"""<div class='summary'><div class='summary-header'><div class='summary-text'><p style='margin:2px 0; font-size:1.1rem;'><strong>Total :</strong> {total_raw} ST <span style='font-size:0.85em; color:#777;'>(dont {excluded_count} exclus : ... / ♪)</span></p><p style='margin:2px 0; color:#64748b;'><strong>Moyenne :</strong> {avg_cps:.2f} CPS</p></div><div class='pie-wrapper'><div class='pie' style='background:{pie_bg};'></div><div style='position:absolute; top:-10px; left:{arrow_pos:.1f}%; transform:translateX(-50%); border-left:8px solid transparent; border-right:8px solid transparent; border-top:12px solid #333;'></div><div style='position:absolute; top:-28px; left:{arrow_pos:.1f}%; transform:translateX(-50%); font-size:0.75em; font-weight:700;'>Médiane : {median_cps:.2f}</div></div></div><div class='barcode-wrapper'><div class='barcode' style='background:{barcode_bg};'></div><p class='caption'>Progression chronologique dans le fichier</p></div></div>""")
     
     html_parts.append("<div class='cat-section'><h2>Répartition</h2>")
     
