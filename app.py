@@ -6,13 +6,7 @@ Audit de conformité selon la Charte Arcom 2011
 
 Copyright (c) 2025 Thierry Jullien
 Tous droits réservés.
-
 Ce code est distribué sous licence MIT.
-Voir le fichier LICENSE pour plus de détails.
-
-Auteur: Thierry Jullien
-Contact: thierry@lisibilite-sme.fr
-Repository: https://github.com/Alyoukaidi/cps-analyzer
 """
 
 import streamlit as st
@@ -24,41 +18,44 @@ import zipfile
 import unicodedata
 
 # ==================================================================================
-# CONVERSION VTT → SRT (EN MÉMOIRE)
+# PARTIE 1 : NETTOYAGE ET CONVERSION (ROBUSTE)
 # ==================================================================================
 
-MOJIBAKE_MAP = {
-    "aÌ": "á", "eÌ": "é", "iÌ": "í", "oÌ": "ó", "uÌ": "ú",
-    "AÌ": "Á", "EÌ": "É", "IÌ": "Í", "OÌ": "Ó", "UÌ": "Ú",
-    "aÌ€": "à", "eÌ€": "è", "uÌ€": "ù", "AÌ€": "À", "EÌ€": "È", "UÌ€": "Ù",
-    "aÌ‚": "â", "eÌ‚": "ê", "iÌ‚": "î", "oÌ‚": "ô", "uÌ‚": "û",
-    "AÌ‚": "Â", "EÌ‚": "Ê", "IÌ‚": "Î", "OÌ‚": "Ô", "UÌ‚": "Û",
-    "cÌ§": "ç", "CÌ§": "Ç",
-    "aÌ": "ä", "AÌ": "Ä", "eÌ": "ë", "EÌ": "Ë",
-    "iÌ": "ï", "IÌ": "Ï", "oÌ": "ö", "OÌ": "Ö",
-    "uÌ": "ü", "UÌ": "Ü",
-    "iÌ¨": "ï", "IÌ¨": "Ï", "iÌ": "ï", "IÌ": "Ï",
-}
-
 def smart_fix_mojibake(text: str) -> str:
-    """Corrige le Mojibake typique d'Arte (encodage CP1252 mal interprété)."""
-    if "\u00cc" in text:
-        try:
-            raw_bytes = text.encode("cp1252")
-            decoded = raw_bytes.decode("utf-8")
-            return unicodedata.normalize("NFC", decoded)
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            pass
-    # Fallback sur la map manuelle
-    for bad, good in MOJIBAKE_MAP.items():
-        text = text.replace(bad, good)
-    return unicodedata.normalize("NFC", text)
+    """
+    Tente de réparer le Mojibake (encodage UTF-8 interprété comme du CP1252/Latin-1).
+    Exemple : Transforme "Ã©" en "é" ou "Ã..." en "à".
+    Cette méthode est plus fiable qu'une liste manuelle car elle utilise la logique binaire.
+    """
+    try:
+        # On essaie d'encoder en Windows-1252 puis de décoder en UTF-8.
+        # C'est l'inverse exact de l'erreur qui produit le Mojibake.
+        fixed = text.encode('cp1252').decode('utf-8')
+        return fixed
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        # Si cela échoue, c'est que le texte n'était pas du Mojibake standard.
+        # On retourne le texte tel quel.
+        return text
 
-def clean_text_line_vtt(line: str) -> str:
-    """Nettoie une ligne VTT : supprime les balises HTML et corrige le Mojibake."""
+def clean_text_line(line: str) -> str:
+    """
+    Nettoie une ligne de texte (VTT ou SRT) :
+    1. Supprime les balises HTML/XML.
+    2. Tente de réparer les caractères cassés si détectés.
+    3. Normalise l'unicode (NFC).
+    """
+    # 1. Suppression des balises
     no_tags = re.sub(r"<[^>]+>", "", line)
-    cleaned = smart_fix_mojibake(no_tags)
-    return cleaned.strip()
+    
+    # 2. Détection sommaire de Mojibake (séquences suspectes courantes)
+    # Si on voit des Ã, Ì, ou des caractères bizarres, on tente le fix.
+    if any(c in no_tags for c in ["Ã", "Ì", "â", "ð", "ë"]):
+        cleaned = smart_fix_mojibake(no_tags)
+    else:
+        cleaned = no_tags
+
+    # 3. Normalisation finale
+    return unicodedata.normalize("NFC", cleaned).strip()
 
 def convert_vtt_to_srt_string(vtt_content: str) -> str:
     """Convertit un contenu VTT (string) en SRT (string) en mémoire."""
@@ -73,7 +70,7 @@ def convert_vtt_to_srt_string(vtt_content: str) -> str:
         nonlocal current_start, current_end, current_text_lines
         if current_start and current_end and current_text_lines:
             cues.append({
-                "start": current_start.replace(".", ",", 1),  # VTT → SRT
+                "start": current_start.replace(".", ",", 1),  # VTT -> SRT
                 "end": current_end.replace(".", ",", 1),
                 "text": current_text_lines[:],
             })
@@ -102,7 +99,7 @@ def convert_vtt_to_srt_string(vtt_content: str) -> str:
             flush_cue()
             continue
 
-        # Timecode VTT (avec point comme séparateur millisecondes)
+        # Timecode VTT (00:00:00.000)
         m = re.search(r"(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})", line)
         if m:
             flush_cue()
@@ -112,24 +109,25 @@ def convert_vtt_to_srt_string(vtt_content: str) -> str:
 
         # Texte du sous-titre
         if current_start and current_end:
-            text = clean_text_line_vtt(line)
+            # Ici on nettoie la ligne immédiatement
+            text = clean_text_line(line)
             if text:
                 current_text_lines.append(text)
 
     flush_cue()  # Dernier cue
 
-    # Génération du format SRT
+    # Reconstruction format SRT
     srt_lines = []
     for idx, cue in enumerate(cues, start=1):
         srt_lines.append(f"{idx}")
         srt_lines.append(f"{cue['start']} --> {cue['end']}")
         srt_lines.extend(cue["text"])
-        srt_lines.append("")  # Ligne vide
+        srt_lines.append("") 
     
     return "\n".join(srt_lines)
 
 # ==================================================================================
-# LOGIQUE MÉTIER CPS
+# PARTIE 2 : LOGIQUE MÉTIER CPS
 # ==================================================================================
 
 cps_timecode_re = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)")
@@ -143,24 +141,28 @@ def parse_timecode_cps(tc: str) -> float:
 def prepare_text_for_cps(text_lines):
     cleaned_lines = []
     for line in text_lines:
+        # Les balises sont déjà parties, mais on sécurise
         line = re.sub(r"<[^>\n]+>", "", line)
         cleaned_lines.append(line)
     text = "".join(line.strip() for line in cleaned_lines)
     
-    # N'appliquer html.unescape que si nécessaire (détection d'entités HTML)
+    # Gestion entités HTML
     if "&" in text and ";" in text:
         text = html.unescape(text)
     
-    # Filtrer les caractères non-imprimables mais PRÉSERVER les accents Unicode
+    # On garde tout ce qui est imprimable pour le comptage
     text = "".join(ch for ch in text if ch.isprintable() or ch.isspace())
     text = re.sub(r" +", " ", text)
     return text.strip()
 
 def is_indicator(text: str) -> bool:
+    """Détecte si le sous-titre est purement indicatif (musique, bruit)."""
     cleaned = text.strip()
+    # Motifs simples
     if re.fullmatch(r"[♪*. ]{1,4}", cleaned): return True
     indicators = ["...", "*...", "♪...", "♪ ...", "* ...", "♪", "*"]
-    return cleaned in indicators
+    if cleaned in indicators: return True
+    return False
 
 def classify_cps(cps: float) -> int:
     if cps <= 12: return 1
@@ -193,30 +195,45 @@ def interpolate_color(cps: float) -> str:
     else: return "#3c0000"
 
 def parse_srt_content(content_str: str):
+    # Séparation par blocs (double saut de ligne)
     blocks = re.split(r"\n\s*\n", content_str.strip(), flags=re.MULTILINE)
     cues = []
     index_counter = 1
+    
     for block in blocks:
         lines = block.splitlines()
         if len(lines) < 2: continue
+        
+        # Gestion index optionnel
         try:
             _ = int(lines[0].strip())
             line_offset = 1
         except ValueError:
             line_offset = 0
+            
         if len(lines) <= line_offset: continue
+        
         tc_line = lines[line_offset].strip()
         if "-->" not in tc_line: continue
+        
         parts = tc_line.split("-->")
         if len(parts) != 2: continue
+        
         start_tc, end_tc = [p.strip() for p in parts]
         start_sec = parse_timecode_cps(start_tc)
         end_sec = parse_timecode_cps(end_tc)
         duration = max(0.0, end_sec - start_sec)
+        
         text_lines = lines[line_offset + 1 :]
-        text_raw = prepare_text_for_cps(text_lines)
-        text_display = "<br>".join(text_lines)
+        
+        # Ici on nettoie aussi pour le SRT direct
+        cleaned_text_lines = [clean_text_line(l) for l in text_lines]
+        
+        text_raw = prepare_text_for_cps(cleaned_text_lines)
+        text_display = "<br>".join(cleaned_text_lines)
+        
         cps = len(text_raw) / duration if duration > 0 else 0.0
+        
         cues.append({
             "index": index_counter,
             "start": start_tc, "end": end_tc, "duration": duration,
@@ -227,12 +244,13 @@ def parse_srt_content(content_str: str):
     return cues
 
 # ==================================================================================
-# GÉNÉRATION HTML (Harmonisée avec le site)
+# PARTIE 3 : GÉNÉRATION HTML
 # ==================================================================================
 
 def generate_html_string(cues, source_filename: str) -> str:
     total_raw = len(cues)
     if total_raw == 0: return f"<h3>⚠️ {source_filename} : Vide ou mal formé.</h3>"
+    
     real_cues = [c for c in cues if not is_indicator(c["text_display"])]
     excluded_count = total_raw - len(real_cues)
     total = len(real_cues)
@@ -243,6 +261,7 @@ def generate_html_string(cues, source_filename: str) -> str:
     
     cps_values = [c["cps"] for c in real_cues if c["duration"] > 0]
     avg_cps = sum(cps_values) / len(cps_values) if cps_values else 0.0
+    
     median_cps = 0.0
     if cps_values:
         sorted_cps = sorted(cps_values)
@@ -252,6 +271,7 @@ def generate_html_string(cues, source_filename: str) -> str:
     cues_by_cat = {i: [] for i in range(1, 8)}
     sorted_global = sorted(real_cues, key=lambda c: c["cps"], reverse=True)
     for c in sorted_global: cues_by_cat[c["category"]].append(c)
+    # Tri interne par CPS croissant pour l'affichage
     for cat in range(1, 8): cues_by_cat[cat].sort(key=lambda c: c["cps"])
     
     count_green = sum(counts[i] for i in range(1, 4))
@@ -279,7 +299,7 @@ def generate_html_string(cues, source_filename: str) -> str:
 
     html_parts = []
     
-    # CSS harmonisé avec lisibilite-sme.fr
+    # CSS embarqué
     html_parts.append(f"""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
     <title>Analyse CPS : {html.escape(source_filename)}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -327,6 +347,7 @@ def generate_html_string(cues, source_filename: str) -> str:
     
     html_parts.append(f"<h1>Analyse CPS : {html.escape(source_filename)}</h1>")
     
+    # PIE CHART
     sorted_by_cps = sorted(real_cues, key=lambda c: c["cps"])
     if not sorted_by_cps: pie_bg = "#e2e8f0"
     else:
@@ -338,11 +359,13 @@ def generate_html_string(cues, source_filename: str) -> str:
             parts.append(f"{color} {(i+1) * pct_per_st:.3f}%")
         pie_bg = "linear-gradient(to right, " + ", ".join(parts) + ")"
     
+    # BARCODE
     barcode_bg = "#e2e8f0"
     if real_cues:
         b_parts = []
         total_real = len(real_cues)
         pct_step = 100.0 / total_real
+        # On remet dans l'ordre chronologique pour le barcode
         chronological_cues = sorted(real_cues, key=lambda c: c["index"])
         for i, cue in enumerate(chronological_cues):
             color = interpolate_color(cue["cps"])
@@ -388,7 +411,7 @@ def generate_html_string(cues, source_filename: str) -> str:
     return "".join(html_parts)
 
 # ==================================================================================
-# APP STREAMLIT
+# PARTIE 4 : APP STREAMLIT (UI)
 # ==================================================================================
 
 def main():
@@ -412,48 +435,21 @@ def main():
     </script>
     """, unsafe_allow_html=True)
     
-    # --- CSS PERSONNALISÉ ---
+    # CSS Personnalisé
     st.markdown("""
     <style>
-    /* Police plus grande */
-    html, body, [class*="css"] {
-        font-size: 16px !important;
-    }
-    p, div, span, li {
-        font-size: 1.05rem !important;
-    }
-    /* Harmonisation avec lisibilite-sme.fr */
-    h1 {
-        color: #1a365d !important;
-    }
-    .stButton>button {
-        background-color: #2E7D32;
-        color: white;
-        border-radius: 8px;
-        font-weight: 600;
-        border: none;
-        padding: 0.5rem 1.5rem;
-        transition: all 0.2s;
-    }
-    .stButton>button:hover {
-        background-color: #1b5e20;
-    }
-    .stDownloadButton>button {
-        background-color: #2E7D32;
-        color: white;
-        border-radius: 8px;
-        font-weight: 600;
-    }
-    .stDownloadButton>button:hover {
-        background-color: #1b5e20;
-    }
-    a {
-        color: #2E7D32;
-    }
+    html, body, [class*="css"] { font-size: 16px !important; }
+    p, div, span, li { font-size: 1.05rem !important; }
+    h1 { color: #1a365d !important; }
+    .stButton>button { background-color: #2E7D32; color: white; border-radius: 8px; font-weight: 600; border: none; padding: 0.5rem 1.5rem; transition: all 0.2s; }
+    .stButton>button:hover { background-color: #1b5e20; }
+    .stDownloadButton>button { background-color: #2E7D32; color: white; border-radius: 8px; font-weight: 600; }
+    .stDownloadButton>button:hover { background-color: #1b5e20; }
+    a { color: #2E7D32; }
     </style>
     """, unsafe_allow_html=True)
     
-    # --- HEADER avec lien retour ---
+    # Header
     st.markdown("""
     <div style='margin-bottom: 20px;'>
         <a href='https://lisibilite-sme.fr' style='color: #64748b; text-decoration: none; font-size: 0.9rem;'>
@@ -464,7 +460,6 @@ def main():
     
     st.title("AUDIT DE CONFORMITÉ SME")
     
-    # Laïus explicatif
     st.markdown("""
     Cet outil open source mesure la **vitesse de défilement** des sous-titres SME en CPS (Caractères Par Seconde).
     
@@ -473,22 +468,20 @@ def main():
     **Téléversez un ou plusieurs fichiers .srt ou .vtt ci-dessous, le résultat s'affichera instantanément.**
     """)
     
-    # Confidentialité
     st.info("**Confidentialité** : Les fichiers sont traités localement en mémoire. Aucun contenu n'est conservé ni transmis.")
-    
     st.markdown("---")
 
-    # Gestion de l'état de l'uploader
+    # State Uploader
     if 'uploader_key' not in st.session_state:
         st.session_state.uploader_key = 0
 
     def reset_uploader():
         st.session_state.uploader_key += 1
 
-    # --- ZONE D'UPLOAD (accepte SRT et VTT) ---
+    # UPLOAD
     uploaded_files = st.file_uploader(
         label="Upload SRT ou VTT files", 
-        type=["srt", "vtt"],  # ← Support VTT ajouté
+        type=["srt", "vtt"], 
         accept_multiple_files=True,
         label_visibility="collapsed",
         key=f"uploader_{st.session_state.uploader_key}"
@@ -504,27 +497,30 @@ def main():
             for i, uploaded_file in enumerate(uploaded_files):
                 status.write(f"Traitement de `{uploaded_file.name}`...")
                 
-                # Lecture du fichier
+                # --- LECTURE ROBUSTE ---
                 bytes_data = uploaded_file.getvalue()
+                # On essaie UTF-8 avec tolérance
                 try:
-                    content = bytes_data.decode("utf-8")
+                    content = bytes_data.decode("utf-8", errors="replace")
                 except UnicodeDecodeError:
-                    content = bytes_data.decode("latin-1")
-                
-                # CONVERSION VTT → SRT si nécessaire
-                if uploaded_file.name.lower().endswith(".vtt"):
+                    # Fallback Windows-1252 si vraiment UTF-8 échoue
                     try:
-                        content = convert_vtt_to_srt_string(content)
-                        status.write(f"✅ VTT converti en SRT : `{uploaded_file.name}`")
-                    except Exception as e:
-                        st.error(f"❌ Erreur de conversion VTT pour `{uploaded_file.name}` : {e}")
-                        continue
+                        content = bytes_data.decode("cp1252", errors="replace")
+                    except:
+                        content = bytes_data.decode("latin-1", errors="replace")
                 
-                # Analyse CPS
+                # --- TRAITEMENT ---
                 try:
+                    # Conversion VTT si nécessaire
+                    if uploaded_file.name.lower().endswith(".vtt"):
+                        content = convert_vtt_to_srt_string(content)
+                        status.write(f"✅ VTT converti : `{uploaded_file.name}`")
+                    
+                    # Analyse
                     cues = parse_srt_content(content)
                     html_report = generate_html_string(cues, uploaded_file.name)
                     
+                    # Stats pour l'affichage résumé
                     real_cues = [c for c in cues if not is_indicator(c["text_display"])]
                     total = len(real_cues)
                     stats = {i: 0 for i in range(1, 8)}
@@ -533,8 +529,6 @@ def main():
                     pct_green = (sum(stats[i] for i in range(1, 4)) / total * 100) if total else 0
                     pct_orange = (stats[4] / total * 100) if total else 0
                     pct_red = (sum(stats[i] for i in range(5, 8)) / total * 100) if total else 0
-                    
-                    # Verdict
                     is_compliant = (pct_green >= 70) and (pct_red <= 10)
                     
                     results.append({
@@ -547,14 +541,14 @@ def main():
                         "compliant": is_compliant
                     })
                 except Exception as e:
-                    st.error(f"❌ Erreur d'analyse pour `{uploaded_file.name}` : {e}")
+                    st.error(f"❌ Erreur `{uploaded_file.name}` : {e}")
                     continue
             
             status.update(label="✅ Analyse terminée", state="complete", expanded=False)
 
         st.markdown("### 📄 Résultats")
         
-        # Bouton ZIP si plusieurs fichiers
+        # Bouton ZIP global
         if len(results) > 1:
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
@@ -573,11 +567,9 @@ def main():
         
         for res in results:
             with st.container(border=True):
-                # Titre et bouton de téléchargement
                 c1, c2 = st.columns([3, 1])
                 with c1:
                     st.subheader(f"`{res['filename']}`")
-                
                 with c2:
                     st.download_button(
                         label="⬇️ Télécharger",
@@ -586,12 +578,9 @@ def main():
                         mime="text/html",
                         key=f"dl_{res['filename']}"
                     )
-                
-                # Rapport détaillé
                 with st.expander("👁️ Voir le rapport détaillé"):
                     components.html(res["html"], height=500, scrolling=True)
     
-    # --- FOOTER ---
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #64748b; font-size: 0.85rem;'>
