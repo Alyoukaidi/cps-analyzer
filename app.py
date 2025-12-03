@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Outil d'analyse CPS (Caractères Par Seconde) pour sous-titres SME
-Audit de conformité selon la Charte Arcom 2011
+Audit CPS SME selon la Charte Arcom 2011
 
 Copyright (c) 2025 Thierry Jullien
 Tous droits réservés.
@@ -416,7 +416,7 @@ def generate_html_string(cues, source_filename: str) -> str:
 
 def main():
     st.set_page_config(
-        page_title="Audit de Conformité SME", 
+        page_title="Audit CPS SME", 
         page_icon="📊", 
         layout="wide",
         initial_sidebar_state="collapsed",
@@ -458,7 +458,7 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    st.title("AUDIT DE CONFORMITÉ SME")
+    st.title("AUDIT CPS SME")
     
     st.markdown("""
     Cet outil open source mesure la **vitesse de défilement** des sous-titres SME en CPS (Caractères Par Seconde).
@@ -468,7 +468,11 @@ def main():
     **Téléversez un ou plusieurs fichiers .srt ou .vtt ci-dessous, le résultat s'affichera instantanément.**
     """)
     
-    st.info("**Confidentialité** : Les fichiers sont traités localement en mémoire. Aucun contenu n'est conservé ni transmis.")
+    st.info(
+        "**Confidentialité** : Les fichiers sont utilisés uniquement le temps de l'analyse, "
+        "ne font l'objet d'aucun enregistrement persistant et ne sont pas transmis à l'auteur de l'outil."
+    )
+
     st.markdown("---")
 
     # State Uploader
@@ -480,7 +484,7 @@ def main():
 
     # UPLOAD
     uploaded_files = st.file_uploader(
-        label="Upload SRT ou VTT files", 
+        label="Téléverser des fichiers SRT ou VTT", 
         type=["srt", "vtt"], 
         accept_multiple_files=True,
         label_visibility="collapsed",
